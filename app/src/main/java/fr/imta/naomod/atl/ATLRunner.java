@@ -101,7 +101,10 @@ public class ATLRunner {
 
 		target.save(null);
 
-		return java.nio.file.Files.readString(Path.of(targetPath));
+		String content = Files.readString(Path.of(targetPath));
+		Files.delete(Path.of(targetPath));
+
+		return content;
 	}
 
 	private static void compileATLModule(String path) {
