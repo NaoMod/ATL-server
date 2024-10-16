@@ -114,5 +114,5 @@ public class ATLRunner {
         try (InputStream fin = new FileInputStream(atlPath)) {
             compiler.compile(fin, emftvmPath);
         }
-        }
+    }
 }
