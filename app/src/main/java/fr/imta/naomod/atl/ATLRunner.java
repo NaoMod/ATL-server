@@ -1,13 +1,5 @@
 package fr.imta.naomod.atl;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Map;
-import java.util.UUID;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EPackage;
@@ -26,95 +18,101 @@ import org.eclipse.m2m.atl.emftvm.impl.resource.EMFTVMResourceFactoryImpl;
 import org.eclipse.m2m.atl.emftvm.util.DefaultModuleResolver;
 import org.eclipse.m2m.atl.emftvm.util.ModuleResolver;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
+import java.util.UUID;
 
-// Setup
 public class ATLRunner {
-	private ResourceSet resourceSet;
+    private ResourceSet resourceSet;
 
-	public ATLRunner() {
-		resourceSet = new ResourceSetImpl();
+    public ATLRunner() {
+        resourceSet = new ResourceSetImpl();
 
-		resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
-			"emftvm",
-			new EMFTVMResourceFactoryImpl()
-		);
-		resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
-			"ecore",
-			new EcoreResourceFactoryImpl()
-		);
-		resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
-			"xmi",
-			new XMIResourceFactoryImpl()
-		);
+        resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
+            "emftvm",
+            new EMFTVMResourceFactoryImpl()
+        );
+        resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
+            "ecore",
+            new EcoreResourceFactoryImpl()
+        );
+        resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
+            "xmi",
+            new XMIResourceFactoryImpl()
+        );
 
-		EPackage e = EcorePackage.eINSTANCE;
-	}
+        EPackage.Registry.INSTANCE.put(EcorePackage.eNS_URI, EcorePackage.eINSTANCE);
+    }
 
+    public String applyTransformation(String source, Map<String, String> inputMetamodels, 
+                                      Map<String, String> outputMetamodels, String atlFilePath) throws IOException {
+        ExecEnv execEnv = EmftvmFactory.eINSTANCE.createExecEnv();
 
-	protected String applyTransformation(String source, Map<String, String> inputMetamodels, Map<String, String> targetMetamodels) throws IOException {
-		// create an execution environment
-		ExecEnv execEnv = EmftvmFactory.eINSTANCE.createExecEnv();
+        // Register input metamodels
+        for (Map.Entry<String, String> entry : inputMetamodels.entrySet()) {
+            registerMetamodel(execEnv, entry.getKey(), entry.getValue());
+        }
 
-		// register source and target metamodels in ExecEnv
-		for (var e : inputMetamodels.entrySet()) {
-			Metamodel sourceMM = EmftvmFactory.eINSTANCE.createMetamodel();
-			Resource sourceMMResource = resourceSet.getResource(URI.createFileURI(e.getValue()), true);
-			resourceSet.getPackageRegistry().put(e.getKey(), sourceMMResource.getContents().get(0));
-			sourceMM.setResource(sourceMMResource);
-			execEnv.registerMetaModel(e.getKey(), sourceMM);
-		}
+        // Register output metamodels
+        for (Map.Entry<String, String> entry : outputMetamodels.entrySet()) {
+            registerMetamodel(execEnv, entry.getKey(), entry.getValue());
+        }
 
-		for (var e : targetMetamodels.entrySet()) {
-			Metamodel targetMM = EmftvmFactory.eINSTANCE.createMetamodel();
-			Resource targetMMResource = resourceSet.getResource(URI.createFileURI(e.getValue()), true);
+        // Compile the ATL module
+		compileATLModule(atlFilePath);
+        // Load input model
+        Model sourceModel = loadModel(source);
+        execEnv.registerInputModel("IN", sourceModel);
 
-			resourceSet.getPackageRegistry().put(e.getKey(), targetMMResource.getContents().get(0));
-			targetMM.setResource(targetMMResource);
-			execEnv.registerMetaModel(e.getKey(), targetMM);
-		}
-		
-		System.out.println(resourceSet.getPackageRegistry());
-		// compile the ATL transformation
-		compileATLModule("./src/main/resources/Class2Relational");
-		
-		Resource inputModel = resourceSet.getResource(URI.createFileURI(source), true);
-		Model sourceModel = EmftvmFactory.eINSTANCE.createModel();
-		sourceModel.setResource(inputModel);
-		System.out.println(sourceModel);
-		// register source model as the IN model in ATL transformation
-		execEnv.registerInputModel("IN", sourceModel);
-		
-		String targetPath = UUID.randomUUID() + ".xmi";
-		Resource target = resourceSet.createResource(URI.createFileURI(targetPath));
-		Model targetModel = EmftvmFactory.eINSTANCE.createModel();
-		targetModel.setResource(target);
-		// register target model as the OUT model in ATL transformation
-		execEnv.registerOutputModel("OUT", targetModel);
+        // Create and register output model
+        String targetPath = UUID.randomUUID() + ".xmi";
+        Model targetModel = createModel(targetPath);
+        execEnv.registerOutputModel("OUT", targetModel);
 
+        // Load and run the transformation
+        ModuleResolver moduleResolver = new DefaultModuleResolver(Path.of(atlFilePath).getParent().toString(), resourceSet);
+        execEnv.loadModule(moduleResolver, Path.of(atlFilePath).getFileName().toString().replace(".atl", ""));
+        execEnv.run(null);
 
-		// create a new ClassModuleResolver
-		// this is used resolve ATL modules
-		final ModuleResolver mr = new DefaultModuleResolver("./src/main/resources/", resourceSet);
-		execEnv.loadModule(mr, "Class2Relational");
+        // Save and return the result
+        targetModel.getResource().save(null);
+        String result = Files.readString(Path.of(targetPath));
+        Files.delete(Path.of(targetPath));
+        return result;
+    }
 
-		execEnv.run(null);
+    private void registerMetamodel(ExecEnv execEnv, String name, String path) throws IOException {
+        Metamodel metamodel = EmftvmFactory.eINSTANCE.createMetamodel();
+        Resource metamodelResource = resourceSet.getResource(URI.createFileURI(path), true);
+        resourceSet.getPackageRegistry().put(name, metamodelResource.getContents().get(0));
+        metamodel.setResource(metamodelResource);
+        execEnv.registerMetaModel(name, metamodel);
+    }
 
-		target.save(null);
+    private Model loadModel(String path) throws IOException {
+        Resource inputResource = resourceSet.getResource(URI.createFileURI(path), true);
+        Model model = EmftvmFactory.eINSTANCE.createModel();
+        model.setResource(inputResource);
+        return model;
+    }
 
-		return java.nio.file.Files.readString(Path.of(targetPath));
-	}
+    private Model createModel(String path) {
+        Resource outputResource = resourceSet.createResource(URI.createFileURI(path));
+        Model model = EmftvmFactory.eINSTANCE.createModel();
+        model.setResource(outputResource);
+        return model;
+    }
 
-	private static void compileATLModule(String path) {
-		AtlToEmftvmCompiler compiler = new AtlToEmftvmCompiler();
-		
-		try {
-			InputStream fin = new FileInputStream(path + ".atl");
-			compiler.compile(fin, path + ".emftvm");
-			fin.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-
+    private void compileATLModule(String atlPath) throws IOException {
+        AtlToEmftvmCompiler compiler = new AtlToEmftvmCompiler();
+        String emftvmPath = atlPath.replace(".atl", ".emftvm");
+        
+        try (InputStream fin = new FileInputStream(atlPath)) {
+            compiler.compile(fin, emftvmPath);
+        }
+        }
 }
