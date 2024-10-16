@@ -1,13 +1,13 @@
 package fr.imta.naomod.atl;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 public class Transformation {
     public int id;
     public String name;
-    public List<String> inputs = new ArrayList<>();
-    public List<String> outputs = new ArrayList<>();
-
+    public String atlFile;
+    public Map<String, String> inputs = new HashMap<>();
+    public Map<String, String> outputs = new HashMap<>();
 
 }
