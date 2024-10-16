@@ -2,6 +2,7 @@ package fr.imta.naomod.atl;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
+import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
 import java.io.File;
@@ -22,14 +23,13 @@ public class Main {
     public void start() {
         var router = Router.router(server);
         
-        router.route().handler(BodyHandler.create());
-        
-         router.get("/transformations").handler(ctx -> {
+        router.route().handler(BodyHandler.create().setDeleteUploadedFilesOnEnd(true)
+        );
+
+        router.get("/transformations").handler(ctx -> {
             List<Transformation> allTransformations = transformationManager.getAllTransformations();
             System.out.println("Returning " + allTransformations.size() + " transformations");
-            ctx.response()
-               .putHeader("content-type", "application/json")
-               .end(Json.encodePrettily(allTransformations));
+            ctx.json(allTransformations);
         });
         
         router.get("/transformation/:id").handler(ctx -> {
@@ -43,23 +43,25 @@ public class Main {
         });
         
         router.post("/transformation/:id/apply").handler(ctx -> {
-            String id = ctx.pathParam("id");
-            try {
-                Transformation transformation = transformationManager.getTransformation(Integer.parseInt(id));
-                if (transformation == null) {
-                    ctx.response().setStatusCode(404).end("Transformation not found");
-                    return;
-                }
+            List<FileUpload> uploads = ctx.fileUploads();
 
-                File tmpFile = Files.createTempFile("", ".xmi").toFile();
-                Files.write(tmpFile.toPath(), ctx.body().toString().getBytes());
-                String result = transformationManager.applyTransformation(transformation, tmpFile.getAbsolutePath());
-                ctx.response().setStatusCode(200).send(result);
-                tmpFile.delete();
-            } catch (IOException e) {
-                ctx.response().setStatusCode(500).end("Error applying transformation");
-            } catch (Exception e) {
-                e.printStackTrace();
+            if (uploads.size() != 1) {
+                ctx.fail(503);
+            }
+            else {
+                String id = ctx.pathParam("id");
+                try {
+                    Transformation transformation = transformationManager.getTransformation(Integer.parseInt(id));
+                    if (transformation == null) {
+                        ctx.response().setStatusCode(404).end("Transformation not found");
+                        return;
+                    }
+
+                    String result = transformationManager.applyTransformation(transformation, uploads.get(0).uploadedFileName());
+                    ctx.response().setStatusCode(200).send(result);
+                } catch (IOException e) {
+                    ctx.response().setStatusCode(500).end("Error applying transformation");
+                }
             }
         });
 

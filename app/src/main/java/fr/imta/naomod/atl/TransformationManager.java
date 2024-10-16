@@ -1,6 +1,7 @@
 package fr.imta.naomod.atl;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -12,6 +13,7 @@ public class TransformationManager {
 
     public TransformationManager() {
         transformations = new HashMap<>();
+        runner = new ATLRunner();
         loadTransformations();
     }
 
@@ -58,8 +60,8 @@ public class TransformationManager {
         return transformations.get(id);
     }
 
-    public String applyTransformation(Transformation transformation, String inputFile) throws Exception {
-        return runner.applyTransformation(inputFile, transformation.inputs, transformation.outputs, transformation.atlFile);
+    public String applyTransformation(Transformation transformation, String inputFile) throws IOException {
+        return runner.applyTransformation(inputFile, transformation);
     }
 }
 

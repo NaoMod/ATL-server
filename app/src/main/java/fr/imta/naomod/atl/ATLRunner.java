@@ -44,26 +44,29 @@ public class ATLRunner {
             "xmi",
             new XMIResourceFactoryImpl()
         );
+        resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
+            "",
+            new XMIResourceFactoryImpl()
+        );
 
         EPackage.Registry.INSTANCE.put(EcorePackage.eNS_URI, EcorePackage.eINSTANCE);
     }
 
-    public String applyTransformation(String source, Map<String, String> inputMetamodels, 
-                                      Map<String, String> outputMetamodels, String atlFilePath) throws IOException {
+    public String applyTransformation(String source, Transformation transfo) throws IOException {
         ExecEnv execEnv = EmftvmFactory.eINSTANCE.createExecEnv();
 
         // Register input metamodels
-        for (Map.Entry<String, String> entry : inputMetamodels.entrySet()) {
+        for (Map.Entry<String, String> entry : transfo.inputs.entrySet()) {
             registerMetamodel(execEnv, entry.getKey(), entry.getValue());
         }
 
         // Register output metamodels
-        for (Map.Entry<String, String> entry : outputMetamodels.entrySet()) {
+        for (Map.Entry<String, String> entry : transfo.outputs.entrySet()) {
             registerMetamodel(execEnv, entry.getKey(), entry.getValue());
         }
 
         // Compile the ATL module
-		compileATLModule(atlFilePath);
+		compileATLModule(transfo.atlFile);
         // Load input model
         Model sourceModel = loadModel(source);
         execEnv.registerInputModel("IN", sourceModel);
@@ -74,8 +77,9 @@ public class ATLRunner {
         execEnv.registerOutputModel("OUT", targetModel);
 
         // Load and run the transformation
-        ModuleResolver moduleResolver = new DefaultModuleResolver(Path.of(atlFilePath).getParent().toString(), resourceSet);
-        execEnv.loadModule(moduleResolver, Path.of(atlFilePath).getFileName().toString().replace(".atl", ""));
+        Path transofPath = Path.of(transfo.atlFile);
+        DefaultModuleResolver moduleResolver = new DefaultModuleResolver(transofPath.getParent() + "/", resourceSet);
+        execEnv.loadModule(moduleResolver, transofPath.getFileName().toString().replace(".atl", ""));
         execEnv.run(null);
 
         // Save and return the result
@@ -108,6 +112,7 @@ public class ATLRunner {
     }
 
     private void compileATLModule(String atlPath) throws IOException {
+        // TODO: skip compilation if file already exists
         AtlToEmftvmCompiler compiler = new AtlToEmftvmCompiler();
         String emftvmPath = atlPath.replace(".atl", ".emftvm");
         
