@@ -32,13 +32,25 @@ public class Main {
             ctx.json(allTransformations);
         });
         
-        router.get("/transformation/:id").handler(ctx -> {
-            String id = ctx.pathParam("id");
-            Transformation transformation = transformationManager.getTransformation(Integer.parseInt(id));
+        router.get("/transformation/:idOrName").handler(ctx -> {
+            String idOrName = ctx.pathParam("idOrName");
+            Transformation transformation = null;
+        
+            // Try to parse as integer for ID
+            try {
+                int id = Integer.parseInt(idOrName);
+                transformation = transformationManager.getTransformationById(id);
+            } catch (NumberFormatException e) {
+                // If not an integer, treat as name
+                transformation = transformationManager.getTransformationByName(idOrName);
+            }
+        
             if (transformation != null) {
                 ctx.json(transformation);
             } else {
-                ctx.response().setStatusCode(404).end("Transformation not found");
+                ctx.response()
+                   .setStatusCode(404)
+                   .end("Transformation not found with ID or name: " + idOrName);
             }
         });
         
@@ -51,7 +63,7 @@ public class Main {
             else {
                 String id = ctx.pathParam("id");
                 try {
-                    Transformation transformation = transformationManager.getTransformation(Integer.parseInt(id));
+                    Transformation transformation = transformationManager.getTransformationById(Integer.parseInt(id));
                     if (transformation == null) {
                         ctx.response().setStatusCode(404).end("Transformation not found");
                         return;

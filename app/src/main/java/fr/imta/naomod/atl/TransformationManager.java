@@ -11,6 +11,7 @@ public class TransformationManager {
     private Map<Integer, Transformation> transformations;
     private ATLRunner runner;
 
+
     public TransformationManager() {
         transformations = new HashMap<>();
         runner = new ATLRunner();
@@ -66,9 +67,17 @@ public class TransformationManager {
         return new ArrayList<>(transformations.values());
     }
 
-    public Transformation getTransformation(int id) {
+    public Transformation getTransformationById(int id) {
         return transformations.get(id);
     }
+
+    public Transformation getTransformationByName(String name) {
+        return transformations.values().stream()
+                .filter(t -> t.name.equalsIgnoreCase(name))
+                .findFirst()
+                .orElse(null);
+    }
+
 
     public String applyTransformation(Transformation transformation, String inputFile) throws IOException {
         return runner.applyTransformation(inputFile, transformation);

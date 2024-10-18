@@ -9,5 +9,8 @@ public class Transformation {
     public String atlFile;
     public Map<String, String> inputs = new HashMap<>();
     public Map<String, String> outputs = new HashMap<>();
+    
+
+
 
 }
