@@ -17,29 +17,39 @@ public class TransformationManager {
         loadTransformations();
     }
 
-    private void loadTransformations() {
+    public void loadTransformations() {
         File dir = new File("src/main/resources/transformations");
-        File[] files = dir.listFiles((d, name) -> name.endsWith(".atl"));
+        File[] transformationDirs = dir.listFiles(File::isDirectory);
         
-        if (files != null) {
-            for (int i = 0; i < files.length; i++) {
-                String fileName = files[i].getName();
-                String transformationName = fileName.substring(0, fileName.lastIndexOf('.'));
+        if (transformationDirs != null) {
+            for (int i = 0; i < transformationDirs.length; i++) {
+                File transformationDir = transformationDirs[i];
+                String transformationName = transformationDir.getName();
                 
+                File atlFile = findFileWithExtension(transformationDir, ".atl");
+                if (atlFile == null) {
+                    continue; // Skip if no ATL file found
+                }
+
                 Transformation transformation = new Transformation();
                 transformation.id = i + 1;
                 transformation.name = transformationName;
-                transformation.atlFile = files[i].getAbsolutePath();
+                transformation.atlFile = atlFile.getAbsolutePath();
                 
                 String[] parts = transformationName.split("2");
                 if (parts.length == 2) {
-                    transformation.inputs = findEcoreFile(dir, parts[0]);
-                    transformation.outputs = findEcoreFile(dir, parts[1]);
+                    transformation.inputs = findEcoreFile(transformationDir, parts[0]);
+                    transformation.outputs = findEcoreFile(transformationDir, parts[1]);
                 }
                 
                 transformations.put(transformation.id, transformation);
             }
         }
+    }
+
+    private File findFileWithExtension(File dir, String extension) {
+        File[] files = dir.listFiles((d, name) -> name.endsWith(extension));
+        return (files != null && files.length > 0) ? files[0] : null;
     }
 
     private Map<String, String> findEcoreFile(File dir, String baseName) {
