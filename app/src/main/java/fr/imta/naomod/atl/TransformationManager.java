@@ -6,6 +6,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.Paths;
 
 public class TransformationManager {
     private Map<Integer, Transformation> transformations;
@@ -76,6 +80,52 @@ public class TransformationManager {
                 .filter(t -> t.name.equalsIgnoreCase(name))
                 .findFirst()
                 .orElse(null);
+    }
+
+    public Transformation addTransformation(String name, String atlFilePath, String inputMetamodelPath, String outputMetamodelPath) throws IOException {
+
+
+        Path sourcePath = Paths.get(inputMetamodelPath);
+        Path targePath = Paths.get(outputMetamodelPath);
+
+        //create the folder for the transformation
+        File transformationDir = new File("src/main/resources/transformations/" + name);
+        transformationDir.mkdirs();
+        //add the files to the folder
+        File atlFile = new File("src/main/resources/transformations/" + name + "/" + name + ".atl");
+        File inputMetamodelFile = new File("src/main/resources/transformations/" + name + "/" + sourcePath.getFileName());
+        File outputMetamodelFile = new File("src/main/resources/transformations/" + name + "/" + targePath.getFileName());
+
+        try {
+            atlFile.createNewFile();
+            inputMetamodelFile.createNewFile();
+            outputMetamodelFile.createNewFile();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        
+        Files.copy(Paths.get(atlFilePath),atlFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(Paths.get(inputMetamodelPath),inputMetamodelFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(Paths.get(outputMetamodelPath),outputMetamodelFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+
+        // Generate new ID
+        int newId = transformations.size() + 1;
+    
+        // Create new transformation 
+        Transformation transformation = new Transformation();
+        transformation.id = newId;
+        transformation.name = name;
+        transformation.atlFile = atlFilePath;
+    
+        // Add input and output metamodels
+        transformation.inputs.put("input", inputMetamodelPath);
+        transformation.outputs.put("output", outputMetamodelPath);
+    
+        // Save the transformation in the map
+        transformations.put(newId, transformation);
+    
+        return transformation;
     }
 
 

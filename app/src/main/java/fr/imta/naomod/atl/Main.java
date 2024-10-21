@@ -53,6 +53,29 @@ public class Main {
                    .end("Transformation not found with ID or name: " + idOrName);
             }
         });
+
+        router.post("/transformation/add").handler(ctx -> {
+            // Get request parameters
+            String name = ctx.request().getParam("name");
+            String atlFilePath = ctx.request().getParam("atlFilePath");
+            String inputMetamodelPath = ctx.request().getParam("inputMetamodelPath");
+            String outputMetamodelPath = ctx.request().getParam("outputMetamodelPath");
+        
+            // Check if parameters are missing
+            if (name == null || atlFilePath == null || inputMetamodelPath == null || outputMetamodelPath == null) {
+                ctx.response().setStatusCode(400).end("Missing parameters");
+                return;
+            }
+        
+            try {
+                // Add transformation
+                Transformation transformation = transformationManager.addTransformation(name, atlFilePath, inputMetamodelPath, outputMetamodelPath);
+                ctx.response().setStatusCode(201);
+                ctx.json(transformation);
+            } catch (IOException e) {
+                ctx.response().setStatusCode(500).end("Error adding transformation: " + e.getMessage());
+            }
+        });
         
         router.post("/transformation/:id/apply").handler(ctx -> {
             List<FileUpload> uploads = ctx.fileUploads();
@@ -76,6 +99,8 @@ public class Main {
                 }
             }
         });
+
+        // create a transformation 
 
         server.createHttpServer().requestHandler(router).listen(8080);
     }
