@@ -16,7 +16,6 @@ import org.eclipse.m2m.atl.emftvm.Model;
 import org.eclipse.m2m.atl.emftvm.compiler.AtlToEmftvmCompiler;
 import org.eclipse.m2m.atl.emftvm.impl.resource.EMFTVMResourceFactoryImpl;
 import org.eclipse.m2m.atl.emftvm.util.DefaultModuleResolver;
-import org.eclipse.m2m.atl.emftvm.util.ModuleResolver;
 
 import java.io.FileInputStream;
 import java.io.IOException;

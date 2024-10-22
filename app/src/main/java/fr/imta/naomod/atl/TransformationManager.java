@@ -90,6 +90,9 @@ public class TransformationManager {
 
         //create the folder for the transformation
         File transformationDir = new File("src/main/resources/transformations/" + name);
+        if (transformationDir.exists()) {
+            throw new IOException("The folder of the transformation already exists : " + transformationDir.getAbsolutePath());
+        }
         transformationDir.mkdirs();
         //add the files to the folder
         File atlFile = new File("src/main/resources/transformations/" + name + "/" + name + ".atl");
@@ -131,6 +134,30 @@ public class TransformationManager {
 
     public String applyTransformation(Transformation transformation, String inputFile) throws IOException {
         return runner.applyTransformation(inputFile, transformation);
+    }
+
+
+    public void deleteTransformation(int int1) {
+        
+        String name = transformations.get(int1).name;
+        //delete the transformation from the map 
+        transformations.remove(int1);
+        //delete the folder of the transformation
+        File transformationDir = new File("src/main/resources/transformations/" + name);
+        if (transformationDir.exists()) {
+            deleteDirectoryRecursively(transformationDir);
+        }
+    }
+    
+    // Recursively delete all files and directories
+    private void deleteDirectoryRecursively(File dir) {
+        File[] allContents = dir.listFiles();
+        if (allContents != null) {
+            for (File file : allContents) {
+                deleteDirectoryRecursively(file);
+            }
+        }
+        dir.delete(); 
     }
 }
 

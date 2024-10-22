@@ -1,13 +1,10 @@
 package fr.imta.naomod.atl;
 
 import io.vertx.core.Vertx;
-import io.vertx.core.json.Json;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.List;
 
 
@@ -80,7 +77,7 @@ public class Main {
         router.post("/transformation/:id/apply").handler(ctx -> {
             List<FileUpload> uploads = ctx.fileUploads();
 
-            if (uploads.size() != 1) {
+            if (uploads.size() != 1) { 
                 ctx.fail(503);
             }
             else {
@@ -99,8 +96,13 @@ public class Main {
                 }
             }
         });
+        //delete transformation
+        router.delete("/transformation/:id").handler(ctx -> {
+            String id = ctx.pathParam("id");
+            transformationManager.deleteTransformation(Integer.parseInt(id));
+            ctx.response().setStatusCode(200).end("Transformation deleted");
+        });
 
-        // create a transformation 
 
         server.createHttpServer().requestHandler(router).listen(8080);
     }
