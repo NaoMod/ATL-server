@@ -149,6 +149,16 @@ public class TransformationManager {
         }
     }
 
+    public void deleteTransformationByName(String idOrName) {
+        Transformation transformation = getTransformationByName(idOrName);
+        System.out.println("Transformation to delete: " + idOrName);
+        System.out.println(" the whole Transformation to delete: " + transformation);
+        System.out.println(getAllTransformations());
+        if (transformation != null) {
+            deleteTransformation(transformation.id);
+            System.out.println("Transformation deleted: " + idOrName);
+        }
+    }
     // Recursively delete all files and directories
     private void deleteDirectoryRecursively(File dir) {
         File[] allContents = dir.listFiles();
@@ -200,5 +210,6 @@ public class TransformationManager {
             deleteDirectoryRecursively(tempDir.toFile());
         }
     }
+
 
 }

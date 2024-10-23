@@ -133,11 +133,24 @@ public class Main {
             }
         });
 
-        // delete transformation
-        router.delete("/transformation/:id").handler(ctx -> {
-            String id = ctx.pathParam("id");
-            transformationManager.deleteTransformation(Integer.parseInt(id));
-            ctx.response().setStatusCode(200).end("Transformation deleted");
+        // delete transformation by name or id
+
+        router.delete("/transformation/:idOrName").handler(ctx -> {
+            String idOrName = ctx.pathParam("idOrName");
+
+            try {
+                int id = Integer.parseInt(idOrName);
+                // Delete by ID
+                transformationManager.deleteTransformation(id);
+                ctx.response().setStatusCode(200).end("Transformation deleted by ID");
+            } catch (NumberFormatException e) {
+                // If it's not an integer, assume it's a name
+                System.out.println("Deleting by name: " + idOrName);
+                transformationManager.deleteTransformationByName(idOrName);
+                ctx.response().setStatusCode(200).end("Transformation deleted by name" + idOrName);
+            } catch (Exception e) {
+                ctx.response().setStatusCode(500).end("An error occurred: " + e.getMessage());
+            }
         });
 
         server.createHttpServer().requestHandler(router).listen(8080);
