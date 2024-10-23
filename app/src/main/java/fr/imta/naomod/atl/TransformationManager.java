@@ -15,7 +15,6 @@ public class TransformationManager {
     private Map<Integer, Transformation> transformations;
     private ATLRunner runner;
 
-
     public TransformationManager() {
         transformations = new HashMap<>();
         runner = new ATLRunner();
@@ -25,12 +24,12 @@ public class TransformationManager {
     public void loadTransformations() {
         File dir = new File("src/main/resources/transformations");
         File[] transformationDirs = dir.listFiles(File::isDirectory);
-        
+
         if (transformationDirs != null) {
             for (int i = 0; i < transformationDirs.length; i++) {
                 File transformationDir = transformationDirs[i];
                 String transformationName = transformationDir.getName();
-                
+
                 File atlFile = findFileWithExtension(transformationDir, ".atl");
                 if (atlFile == null) {
                     continue; // Skip if no ATL file found
@@ -40,13 +39,13 @@ public class TransformationManager {
                 transformation.id = i + 1;
                 transformation.name = transformationName;
                 transformation.atlFile = atlFile.getAbsolutePath();
-                
+
                 String[] parts = transformationName.split("2");
                 if (parts.length == 2) {
                     transformation.inputs = findEcoreFile(transformationDir, parts[0]);
                     transformation.outputs = findEcoreFile(transformationDir, parts[1]);
                 }
-                
+
                 transformations.put(transformation.id, transformation);
             }
         }
@@ -59,7 +58,8 @@ public class TransformationManager {
 
     private Map<String, String> findEcoreFile(File dir, String baseName) {
         Map<String, String> result = new HashMap<>();
-        File[] ecoreFiles = dir.listFiles((d, name) -> name.toLowerCase().startsWith(baseName.toLowerCase()) && name.endsWith(".ecore"));
+        File[] ecoreFiles = dir.listFiles(
+                (d, name) -> name.toLowerCase().startsWith(baseName.toLowerCase()) && name.endsWith(".ecore"));
         if (ecoreFiles != null && ecoreFiles.length > 0) {
             String metamodelName = ecoreFiles[0].getName().replace(".ecore", "");
             result.put(metamodelName, ecoreFiles[0].getAbsolutePath());
@@ -82,22 +82,25 @@ public class TransformationManager {
                 .orElse(null);
     }
 
-    public Transformation addTransformation(String name, String atlFilePath, String inputMetamodelPath, String outputMetamodelPath) throws IOException {
-
+    public Transformation addTransformation(String name, String atlFilePath, String inputMetamodelPath,
+            String outputMetamodelPath) throws IOException {
 
         Path sourcePath = Paths.get(inputMetamodelPath);
         Path targePath = Paths.get(outputMetamodelPath);
 
-        //create the folder for the transformation
+        // create the folder for the transformation
         File transformationDir = new File("src/main/resources/transformations/" + name);
         if (transformationDir.exists()) {
-            throw new IOException("The folder of the transformation already exists : " + transformationDir.getAbsolutePath());
+            throw new IOException(
+                    "The folder of the transformation already exists : " + transformationDir.getAbsolutePath());
         }
         transformationDir.mkdirs();
-        //add the files to the folder
+        // add the files to the folder
         File atlFile = new File("src/main/resources/transformations/" + name + "/" + name + ".atl");
-        File inputMetamodelFile = new File("src/main/resources/transformations/" + name + "/" + sourcePath.getFileName());
-        File outputMetamodelFile = new File("src/main/resources/transformations/" + name + "/" + targePath.getFileName());
+        File inputMetamodelFile = new File(
+                "src/main/resources/transformations/" + name + "/" + sourcePath.getFileName());
+        File outputMetamodelFile = new File(
+                "src/main/resources/transformations/" + name + "/" + targePath.getFileName());
 
         try {
             atlFile.createNewFile();
@@ -106,49 +109,46 @@ public class TransformationManager {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        
-        Files.copy(Paths.get(atlFilePath),atlFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        Files.copy(Paths.get(inputMetamodelPath),inputMetamodelFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        Files.copy(Paths.get(outputMetamodelPath),outputMetamodelFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
+        Files.copy(Paths.get(atlFilePath), atlFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(Paths.get(inputMetamodelPath), inputMetamodelFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(Paths.get(outputMetamodelPath), outputMetamodelFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
         // Generate new ID
         int newId = transformations.size() + 1;
-    
-        // Create new transformation 
+
+        // Create new transformation
         Transformation transformation = new Transformation();
         transformation.id = newId;
         transformation.name = name;
         transformation.atlFile = atlFilePath;
-    
+
         // Add input and output metamodels
         transformation.inputs.put("input", inputMetamodelPath);
         transformation.outputs.put("output", outputMetamodelPath);
-    
+
         // Save the transformation in the map
         transformations.put(newId, transformation);
-    
+
         return transformation;
     }
-
 
     public String applyTransformation(Transformation transformation, String inputFile) throws IOException {
         return runner.applyTransformation(inputFile, transformation);
     }
 
-
     public void deleteTransformation(int int1) {
-        
+
         String name = transformations.get(int1).name;
-        //delete the transformation from the map 
+        // delete the transformation from the map
         transformations.remove(int1);
-        //delete the folder of the transformation
+        // delete the folder of the transformation
         File transformationDir = new File("src/main/resources/transformations/" + name);
         if (transformationDir.exists()) {
             deleteDirectoryRecursively(transformationDir);
         }
     }
-    
+
     // Recursively delete all files and directories
     private void deleteDirectoryRecursively(File dir) {
         File[] allContents = dir.listFiles();
@@ -157,25 +157,48 @@ public class TransformationManager {
                 deleteDirectoryRecursively(file);
             }
         }
-        dir.delete(); 
+        dir.delete();
     }
+
+    public String applyTransformationChain(List<String> transformationNames, String initialInputFile)
+            throws IOException {
+        if (transformationNames == null || transformationNames.isEmpty()) {
+            throw new IllegalArgumentException("Transformation chain cannot be empty");
+        }
+
+        String currentInputFile = initialInputFile;
+        String finalOutput = null;
+        Path tempDir = Files.createTempDirectory("chain_transformation_");
+
+        try {
+            // Apply each transformation in sequence
+            for (int i = 0; i < transformationNames.size(); i++) {
+                // Get current transformation
+                Transformation currentTransformation = getTransformationByName(transformationNames.get(i));
+                if (currentTransformation == null) {
+                    throw new IllegalArgumentException("Transformation not found: " + transformationNames.get(i));
+                }
+
+                // Apply transformation
+                String output = runner.applyTransformation(currentInputFile, currentTransformation);
+
+                if (i < transformationNames.size() - 1) {
+                    // Save intermediate result to temp file
+                    Path tempOutput = tempDir.resolve("intermediate_" + i + ".xmi");
+                    Files.write(tempOutput, output.getBytes());
+                    currentInputFile = tempOutput.toString();
+                } else {
+                    // Keep final output
+                    finalOutput = output;
+                }
+            }
+
+            return finalOutput;
+
+        } finally {
+            // Clean up temp files
+            deleteDirectoryRecursively(tempDir.toFile());
+        }
+    }
+
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
