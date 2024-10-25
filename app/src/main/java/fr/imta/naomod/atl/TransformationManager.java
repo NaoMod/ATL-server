@@ -24,48 +24,48 @@ public class TransformationManager {
     public void loadTransformations() {
         // List to store directories to process
         List<File> dirsToProcess = new ArrayList<>();
-        
+
         // Add original transformations directory
         File originalDir = new File("src/main/resources/transformations");
         if (originalDir.exists()) {
             dirsToProcess.add(originalDir);
         }
-    
+
         // Add user transformations directory
         File userDir = new File("src/main/resources/userTransformations");
         if (userDir.exists()) {
             dirsToProcess.add(userDir);
         }
-    
+
         int idCounter = 1; // Counter for generating unique IDs
-    
+
         // Process each directory
         for (File dir : dirsToProcess) {
             File[] transformationDirs = dir.listFiles(File::isDirectory);
-    
+
             if (transformationDirs != null) {
                 for (File transformationDir : transformationDirs) {
                     String transformationName = transformationDir.getName();
-    
+
                     File atlFile = findFileWithExtension(transformationDir, ".atl");
                     if (atlFile == null) {
                         continue; // Skip if no ATL file found
                     }
-    
+
                     Transformation transformation = new Transformation();
                     transformation.id = idCounter++;
                     transformation.name = transformationName;
                     transformation.atlFile = atlFile.getAbsolutePath();
-    
+
                     String[] parts = transformationName.split("2");
                     if (parts.length == 2) {
                         // Identify metamodels by looking at .ecore files in the directory
                         File[] ecoreFiles = transformationDir.listFiles((dir1, name) -> name.endsWith(".ecore"));
-                        
+
                         if (ecoreFiles != null) {
                             for (File ecoreFile : ecoreFiles) {
                                 String metamodelName = ecoreFile.getName().replace(".ecore", "");
-                                
+
                                 // If metamodel is part of input names (before 2)
                                 if (parts[0].contains(metamodelName)) {
                                     Map<String, String> inputMap = findEcoreFile(transformationDir, metamodelName);
@@ -73,7 +73,7 @@ public class TransformationManager {
                                         transformation.inputs.putAll(inputMap);
                                     }
                                 }
-                                
+
                                 // If metamodel is part of output names (after 2)
                                 if (parts[1].contains(metamodelName)) {
                                     Map<String, String> outputMap = findEcoreFile(transformationDir, metamodelName);
@@ -84,7 +84,7 @@ public class TransformationManager {
                             }
                         }
                     }
-    
+
                     transformations.put(transformation.id, transformation);
                 }
             }
@@ -122,11 +122,8 @@ public class TransformationManager {
                 .orElse(null);
     }
 
-    public Transformation addTransformation(String name, String atlFilePath, String inputMetamodelPath,
-            String outputMetamodelPath) throws IOException {
-
-        Path sourcePath = Paths.get(inputMetamodelPath);
-        Path targePath = Paths.get(outputMetamodelPath);
+    public Transformation addTransformation(String name, String atlFilePath,
+            List<String> inputMetamodelPaths, List<String> outputMetamodelPaths) throws IOException {
 
         // create the userTransformations directory first
         File userTransformationsDir = new File("src/main/resources/userTransformations");
@@ -142,24 +139,30 @@ public class TransformationManager {
         }
         transformationDir.mkdirs();
 
-        // add the files to the folder
+        // add the ATL file to the folder
         File atlFile = new File("src/main/resources/userTransformations/" + name + "/" + name + ".atl");
-        File inputMetamodelFile = new File(
-                "src/main/resources/userTransformations/" + name + "/" + sourcePath.getFileName());
-        File outputMetamodelFile = new File(
-                "src/main/resources /userTransformations/" + name + "/" + targePath.getFileName());
+        atlFile.createNewFile();
+        Files.copy(Paths.get(atlFilePath), atlFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
-        try {
-            atlFile.createNewFile();
+        // Copy all input metamodel files
+        for (int i = 0; i < inputMetamodelPaths.size(); i++) {
+            String inputPath = inputMetamodelPaths.get(i);
+            Path sourcePath = Paths.get(inputPath);
+            File inputMetamodelFile = new File(
+                    "src/main/resources/userTransformations/" + name + "/" + sourcePath.getFileName());
             inputMetamodelFile.createNewFile();
-            outputMetamodelFile.createNewFile();
-        } catch (IOException e) {
-            e.printStackTrace();
+            Files.copy(Paths.get(inputPath), inputMetamodelFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
 
-        Files.copy(Paths.get(atlFilePath), atlFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        Files.copy(Paths.get(inputMetamodelPath), inputMetamodelFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        Files.copy(Paths.get(outputMetamodelPath), outputMetamodelFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        // Copy all output metamodel files
+        for (int i = 0; i < outputMetamodelPaths.size(); i++) {
+            String outputPath = outputMetamodelPaths.get(i);
+            Path targetPath = Paths.get(outputPath);
+            File outputMetamodelFile = new File(
+                    "src/main/resources/userTransformations/" + name + "/" + targetPath.getFileName());
+            outputMetamodelFile.createNewFile();
+            Files.copy(Paths.get(outputPath), outputMetamodelFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
 
         // Generate new ID
         int newId = transformations.size() + 1;
@@ -170,9 +173,15 @@ public class TransformationManager {
         transformation.name = name;
         transformation.atlFile = atlFilePath;
 
-        // Add input and output metamodels
-        transformation.inputs.put("input", inputMetamodelPath);
-        transformation.outputs.put("output", outputMetamodelPath);
+        // Add input metamodels
+        for (int i = 0; i < inputMetamodelPaths.size(); i++) {
+            transformation.inputs.put("input" + (i + 1), inputMetamodelPaths.get(i));
+        }
+
+        // Add output metamodels
+        for (int i = 0; i < outputMetamodelPaths.size(); i++) {
+            transformation.outputs.put("output" + (i + 1), outputMetamodelPaths.get(i));
+        }
 
         // Save the transformation in the map
         transformations.put(newId, transformation);

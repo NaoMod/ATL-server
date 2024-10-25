@@ -8,7 +8,7 @@ import io.vertx.ext.web.handler.BodyHandler;
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
-
+import java.util.ArrayList;
 public class Main {
     private Vertx server;
     private TransformationManager transformationManager;
@@ -32,7 +32,6 @@ public class Main {
         router.get("/transformation/:idOrName").handler(ctx -> {
             String idOrName = ctx.pathParam("idOrName");
             Transformation transformation = null;
-
             // Try to parse as integer for ID
             try {
                 int id = Integer.parseInt(idOrName);
@@ -55,19 +54,37 @@ public class Main {
             // Get request parameters
             String name = ctx.request().getParam("name");
             String atlFilePath = ctx.request().getParam("atlFilePath");
-            String inputMetamodelPath = ctx.request().getParam("inputMetamodelPath");
-            String outputMetamodelPath = ctx.request().getParam("outputMetamodelPath");
-
+            
+            // Get input metamodel paths as a list
+            List<String> inputMetamodelPaths = new ArrayList<>();
+            int inputIndex = 1;
+            while (true) {
+                String inputPath = ctx.request().getParam("inputMetamodelPath" + inputIndex);
+                if (inputPath == null) break;
+                inputMetamodelPaths.add(inputPath);
+                inputIndex++;
+            }
+        
+            // Get output metamodel paths as a list
+            List<String> outputMetamodelPaths = new ArrayList<>();
+            int outputIndex = 1;
+            while (true) {
+                String outputPath = ctx.request().getParam("outputMetamodelPath" + outputIndex);
+                if (outputPath == null) break;
+                outputMetamodelPaths.add(outputPath);
+                outputIndex++;
+            }
+        
             // Check if parameters are missing
-            if (name == null || atlFilePath == null || inputMetamodelPath == null || outputMetamodelPath == null) {
+            if (name == null || atlFilePath == null || inputMetamodelPaths.isEmpty() || outputMetamodelPaths.isEmpty()) {
                 ctx.response().setStatusCode(400).end("Missing parameters");
                 return;
             }
-
+        
             try {
-                // Add transformation
+                // Add transformation with multiple metamodels
                 Transformation transformation = transformationManager.addTransformation(name, atlFilePath,
-                        inputMetamodelPath, outputMetamodelPath);
+                        inputMetamodelPaths, outputMetamodelPaths);
                 ctx.response().setStatusCode(201);
                 ctx.json(transformation);
             } catch (IOException e) {
