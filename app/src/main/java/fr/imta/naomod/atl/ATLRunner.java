@@ -91,7 +91,12 @@ public class ATLRunner {
     private void registerMetamodel(ExecEnv execEnv, String name, String path) throws IOException {
         Metamodel metamodel = EmftvmFactory.eINSTANCE.createMetamodel();
         Resource metamodelResource = resourceSet.getResource(URI.createFileURI(path), true);
-        resourceSet.getPackageRegistry().put(name, metamodelResource.getContents().get(0));
+        for (var p : metamodelResource.getContents()) {
+            if (p instanceof EPackage) {
+                System.out.println(p);
+                resourceSet.getPackageRegistry().put(((EPackage)p).getName(), p);
+            }
+        }
         metamodel.setResource(metamodelResource);
         execEnv.registerMetaModel(name, metamodel);
     }

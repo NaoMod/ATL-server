@@ -88,19 +88,26 @@ public class TransformationManager {
         Path sourcePath = Paths.get(inputMetamodelPath);
         Path targePath = Paths.get(outputMetamodelPath);
 
-        // create the folder for the transformation
-        File transformationDir = new File("src/main/resources/transformations/" + name);
+        // create the userTransformations directory first
+        File userTransformationsDir = new File("src/main/resources/transformations/userTransformations");
+        if (!userTransformationsDir.exists()) {
+            userTransformationsDir.mkdirs();
+        }
+
+        // create the folder for the transformation inside userTransformations
+        File transformationDir = new File("src/main/resources/transformations/userTransformations/" + name);
         if (transformationDir.exists()) {
             throw new IOException(
                     "The folder of the transformation already exists : " + transformationDir.getAbsolutePath());
         }
         transformationDir.mkdirs();
+
         // add the files to the folder
-        File atlFile = new File("src/main/resources/transformations/" + name + "/" + name + ".atl");
+        File atlFile = new File("src/main/resources/transformations/userTransformations/" + name + "/" + name + ".atl");
         File inputMetamodelFile = new File(
-                "src/main/resources/transformations/" + name + "/" + sourcePath.getFileName());
+                "src/main/resources/transformations/userTransformations/" + name + "/" + sourcePath.getFileName());
         File outputMetamodelFile = new File(
-                "src/main/resources/transformations/" + name + "/" + targePath.getFileName());
+                "src/main/resources/transformations/userTransformations/" + name + "/" + targePath.getFileName());
 
         try {
             atlFile.createNewFile();
@@ -159,6 +166,7 @@ public class TransformationManager {
             System.out.println("Transformation deleted: " + idOrName);
         }
     }
+
     // Recursively delete all files and directories
     private void deleteDirectoryRecursively(File dir) {
         File[] allContents = dir.listFiles();
@@ -210,6 +218,5 @@ public class TransformationManager {
             deleteDirectoryRecursively(tempDir.toFile());
         }
     }
-
 
 }
