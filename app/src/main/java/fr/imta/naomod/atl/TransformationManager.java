@@ -59,8 +59,30 @@ public class TransformationManager {
     
                     String[] parts = transformationName.split("2");
                     if (parts.length == 2) {
-                        transformation.inputs = findEcoreFile(transformationDir, parts[0]);
-                        transformation.outputs = findEcoreFile(transformationDir, parts[1]);
+                        // Identify metamodels by looking at .ecore files in the directory
+                        File[] ecoreFiles = transformationDir.listFiles((dir1, name) -> name.endsWith(".ecore"));
+                        
+                        if (ecoreFiles != null) {
+                            for (File ecoreFile : ecoreFiles) {
+                                String metamodelName = ecoreFile.getName().replace(".ecore", "");
+                                
+                                // If metamodel is part of input names (before 2)
+                                if (parts[0].contains(metamodelName)) {
+                                    Map<String, String> inputMap = findEcoreFile(transformationDir, metamodelName);
+                                    if (inputMap != null) {
+                                        transformation.inputs.putAll(inputMap);
+                                    }
+                                }
+                                
+                                // If metamodel is part of output names (after 2)
+                                if (parts[1].contains(metamodelName)) {
+                                    Map<String, String> outputMap = findEcoreFile(transformationDir, metamodelName);
+                                    if (outputMap != null) {
+                                        transformation.outputs.putAll(outputMap);
+                                    }
+                                }
+                            }
+                        }
                     }
     
                     transformations.put(transformation.id, transformation);
