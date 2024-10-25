@@ -22,31 +22,49 @@ public class TransformationManager {
     }
 
     public void loadTransformations() {
-        File dir = new File("src/main/resources/transformations");
-        File[] transformationDirs = dir.listFiles(File::isDirectory);
-
-        if (transformationDirs != null) {
-            for (int i = 0; i < transformationDirs.length; i++) {
-                File transformationDir = transformationDirs[i];
-                String transformationName = transformationDir.getName();
-
-                File atlFile = findFileWithExtension(transformationDir, ".atl");
-                if (atlFile == null) {
-                    continue; // Skip if no ATL file found
+        // List to store directories to process
+        List<File> dirsToProcess = new ArrayList<>();
+        
+        // Add original transformations directory
+        File originalDir = new File("src/main/resources/transformations");
+        if (originalDir.exists()) {
+            dirsToProcess.add(originalDir);
+        }
+    
+        // Add user transformations directory
+        File userDir = new File("src/main/resources/userTransformations");
+        if (userDir.exists()) {
+            dirsToProcess.add(userDir);
+        }
+    
+        int idCounter = 1; // Counter for generating unique IDs
+    
+        // Process each directory
+        for (File dir : dirsToProcess) {
+            File[] transformationDirs = dir.listFiles(File::isDirectory);
+    
+            if (transformationDirs != null) {
+                for (File transformationDir : transformationDirs) {
+                    String transformationName = transformationDir.getName();
+    
+                    File atlFile = findFileWithExtension(transformationDir, ".atl");
+                    if (atlFile == null) {
+                        continue; // Skip if no ATL file found
+                    }
+    
+                    Transformation transformation = new Transformation();
+                    transformation.id = idCounter++;
+                    transformation.name = transformationName;
+                    transformation.atlFile = atlFile.getAbsolutePath();
+    
+                    String[] parts = transformationName.split("2");
+                    if (parts.length == 2) {
+                        transformation.inputs = findEcoreFile(transformationDir, parts[0]);
+                        transformation.outputs = findEcoreFile(transformationDir, parts[1]);
+                    }
+    
+                    transformations.put(transformation.id, transformation);
                 }
-
-                Transformation transformation = new Transformation();
-                transformation.id = i + 1;
-                transformation.name = transformationName;
-                transformation.atlFile = atlFile.getAbsolutePath();
-
-                String[] parts = transformationName.split("2");
-                if (parts.length == 2) {
-                    transformation.inputs = findEcoreFile(transformationDir, parts[0]);
-                    transformation.outputs = findEcoreFile(transformationDir, parts[1]);
-                }
-
-                transformations.put(transformation.id, transformation);
             }
         }
     }
@@ -89,13 +107,13 @@ public class TransformationManager {
         Path targePath = Paths.get(outputMetamodelPath);
 
         // create the userTransformations directory first
-        File userTransformationsDir = new File("src/main/resources/transformations/userTransformations");
+        File userTransformationsDir = new File("src/main/resources/userTransformations");
         if (!userTransformationsDir.exists()) {
             userTransformationsDir.mkdirs();
         }
 
         // create the folder for the transformation inside userTransformations
-        File transformationDir = new File("src/main/resources/transformations/userTransformations/" + name);
+        File transformationDir = new File("src/main/resources/userTransformations/" + name);
         if (transformationDir.exists()) {
             throw new IOException(
                     "The folder of the transformation already exists : " + transformationDir.getAbsolutePath());
@@ -103,11 +121,11 @@ public class TransformationManager {
         transformationDir.mkdirs();
 
         // add the files to the folder
-        File atlFile = new File("src/main/resources/transformations/userTransformations/" + name + "/" + name + ".atl");
+        File atlFile = new File("src/main/resources/userTransformations/" + name + "/" + name + ".atl");
         File inputMetamodelFile = new File(
-                "src/main/resources/transformations/userTransformations/" + name + "/" + sourcePath.getFileName());
+                "src/main/resources/userTransformations/" + name + "/" + sourcePath.getFileName());
         File outputMetamodelFile = new File(
-                "src/main/resources/transformations/userTransformations/" + name + "/" + targePath.getFileName());
+                "src/main/resources /userTransformations/" + name + "/" + targePath.getFileName());
 
         try {
             atlFile.createNewFile();
