@@ -92,25 +92,39 @@ public class Main {
             }
         });
 
-        router.post("/transformation/:id/apply").handler(ctx -> {
+        router.post("/transformation/:idOrName/apply").handler(ctx -> {
             List<FileUpload> uploads = ctx.fileUploads();
-
+            
             if (uploads.size() != 1) {
                 ctx.fail(503);
             } else {
-                String id = ctx.pathParam("id");
+                String idOrName = ctx.pathParam("idOrName");
                 try {
-                    Transformation transformation = transformationManager.getTransformationById(Integer.parseInt(id));
+                    Transformation transformation = null;
+                    
+                    // Try to parse as integer for ID
+                    try {
+                        int id = Integer.parseInt(idOrName);
+                        transformation = transformationManager.getTransformationById(id);
+                    } catch (NumberFormatException e) {
+                        // If not an integer, treat as name
+                        transformation = transformationManager.getTransformationByName(idOrName);
+                    }
+                    
                     if (transformation == null) {
-                        ctx.response().setStatusCode(404).end("Transformation not found");
+                        ctx.response()
+                            .setStatusCode(404)
+                            .end("Transformation not found with ID or name: " + idOrName);
                         return;
                     }
-
+        
                     String result = transformationManager.applyTransformation(transformation,
                             uploads.get(0).uploadedFileName());
                     ctx.response().setStatusCode(200).send(result);
                 } catch (IOException e) {
-                    ctx.response().setStatusCode(500).end("Error applying transformation");
+                    ctx.response()
+                        .setStatusCode(500)
+                        .end("Error applying transformation");
                 }
             }
         });
