@@ -55,12 +55,12 @@ public class ATLRunner {
         ExecEnv execEnv = EmftvmFactory.eINSTANCE.createExecEnv();
 
         // Register input metamodels
-        for (Map.Entry<String, String> entry : transfo.inputs.entrySet()) {
+        for (Map.Entry<String, String> entry : transfo.SourceMetamodels.entrySet()) {
             registerMetamodel(execEnv, entry.getKey(), entry.getValue());
         }
 
         // Register output metamodels
-        for (Map.Entry<String, String> entry : transfo.outputs.entrySet()) {
+        for (Map.Entry<String, String> entry : transfo.TargetMetamodels.entrySet()) {
             registerMetamodel(execEnv, entry.getKey(), entry.getValue());
         }
 

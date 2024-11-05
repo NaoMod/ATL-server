@@ -7,10 +7,7 @@ public class Transformation {
     public int id;
     public String name;
     public String atlFile;
-    public Map<String, String> inputs = new HashMap<>();
-    public Map<String, String> outputs = new HashMap<>();
+    public Map<String, String> SourceMetamodels = new HashMap<>();
+    public Map<String, String> TargetMetamodels = new HashMap<>();
     
-
-
-
 }

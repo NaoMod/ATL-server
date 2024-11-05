@@ -70,7 +70,7 @@ public class TransformationManager {
                                 if (parts[0].contains(metamodelName)) {
                                     Map<String, String> inputMap = findEcoreFile(transformationDir, metamodelName);
                                     if (inputMap != null) {
-                                        transformation.inputs.putAll(inputMap);
+                                        transformation.SourceMetamodels.putAll(inputMap);
                                     }
                                 }
 
@@ -78,7 +78,7 @@ public class TransformationManager {
                                 if (parts[1].contains(metamodelName)) {
                                     Map<String, String> outputMap = findEcoreFile(transformationDir, metamodelName);
                                     if (outputMap != null) {
-                                        transformation.outputs.putAll(outputMap);
+                                        transformation.TargetMetamodels.putAll(outputMap);
                                     }
                                 }
                             }
@@ -175,12 +175,12 @@ public class TransformationManager {
 
         // Add input metamodels
         for (int i = 0; i < inputMetamodelPaths.size(); i++) {
-            transformation.inputs.put("input" + (i + 1), inputMetamodelPaths.get(i));
+            transformation.SourceMetamodels.put("input" + (i + 1), inputMetamodelPaths.get(i));
         }
 
         // Add output metamodels
         for (int i = 0; i < outputMetamodelPaths.size(); i++) {
-            transformation.outputs.put("output" + (i + 1), outputMetamodelPaths.get(i));
+            transformation.TargetMetamodels.put("output" + (i + 1), outputMetamodelPaths.get(i));
         }
 
         // Save the transformation in the map
