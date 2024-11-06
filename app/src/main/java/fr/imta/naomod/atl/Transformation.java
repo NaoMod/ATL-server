@@ -9,5 +9,5 @@ public class Transformation {
     public String atlFile;
     public Map<String, String> SourceMetamodels = new HashMap<>();
     public Map<String, String> TargetMetamodels = new HashMap<>();
-    
+    public String description;
 }

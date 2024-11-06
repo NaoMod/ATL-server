@@ -56,6 +56,17 @@ public class TransformationManager {
                     transformation.id = idCounter++;
                     transformation.name = transformationName;
                     transformation.atlFile = atlFile.getAbsolutePath();
+                    // Load the description from a description.txt file if it exists
+                    File descFile = new File(transformationDir, "description.txt");
+                    if (descFile.exists()) {
+                        try {
+                            transformation.description = Files.readString(descFile.toPath()).trim();
+                        } catch (IOException e) {
+                            transformation.description = "Error reading description: " + e.getMessage();
+                        }
+                    } else {
+                        transformation.description = "No description available";
+                    }
 
                     String[] parts = transformationName.split("2");
                     if (parts.length == 2) {
@@ -123,7 +134,7 @@ public class TransformationManager {
     }
 
     public Transformation addTransformation(String name, String atlFilePath,
-            List<String> inputMetamodelPaths, List<String> outputMetamodelPaths) throws IOException {
+            List<String> inputMetamodelPaths, List<String> outputMetamodelPaths, String description) throws IOException {
 
         // create the userTransformations directory first
         File userTransformationsDir = new File("src/main/resources/userTransformations");
@@ -138,6 +149,9 @@ public class TransformationManager {
                     "The folder of the transformation already exists : " + transformationDir.getAbsolutePath());
         }
         transformationDir.mkdirs();
+
+        File descFile = new File(transformationDir, "description.txt");
+        Files.writeString(descFile.toPath(), description != null ? description : "No description provided");
 
         // add the ATL file to the folder
         File atlFile = new File("src/main/resources/userTransformations/" + name + "/" + name + ".atl");

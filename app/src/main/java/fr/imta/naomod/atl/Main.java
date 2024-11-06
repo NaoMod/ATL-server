@@ -54,6 +54,7 @@ public class Main {
             // Get request parameters
             String name = ctx.request().getParam("name");
             String atlFilePath = ctx.request().getParam("atlFilePath");
+            String description = ctx.request().getParam("description"); 
             
             // Get input metamodel paths as a list
             List<String> inputMetamodelPaths = new ArrayList<>();
@@ -84,7 +85,7 @@ public class Main {
             try {
                 // Add transformation with multiple metamodels
                 Transformation transformation = transformationManager.addTransformation(name, atlFilePath,
-                        inputMetamodelPaths, outputMetamodelPaths);
+                        inputMetamodelPaths, outputMetamodelPaths,description);
                 ctx.response().setStatusCode(201);
                 ctx.json(transformation);
             } catch (IOException e) {
