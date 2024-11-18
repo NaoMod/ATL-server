@@ -6,18 +6,21 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import io.vertx.core.json.Json;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.Paths;
 
 public class TransformationManager {
-    private Map<Integer, Transformation> transformations;
+    private Map<String, Transformation> transformations;
     private ATLRunner runner;
 
     public TransformationManager() {
         transformations = new HashMap<>();
-        runner = new ATLRunner();
+        runner = new EMFTVMRunner();
         loadTransformations();
     }
 
@@ -26,7 +29,7 @@ public class TransformationManager {
         List<File> dirsToProcess = new ArrayList<>();
 
         // Add original transformations directory
-        File originalDir = new File("src/main/resources/transformations");
+        File originalDir = new File("/Users/zakariahachm/Downloads/atl_zoo");
         if (originalDir.exists()) {
             dirsToProcess.add(originalDir);
         }
@@ -45,8 +48,26 @@ public class TransformationManager {
 
             if (transformationDirs != null) {
                 for (File transformationDir : transformationDirs) {
+                    System.out.println("Processing transformation: " + transformationDir.getName());
                     String transformationName = transformationDir.getName();
+                    File config = findFileWithExtension(transformationDir, "json");
 
+                    if (config == null) continue;
+
+                    String content;
+                    try {
+                        content = Files.readString(config.toPath());
+                        Transformation[] transformationsJson = Json.decodeValue(content, Transformation[].class);
+                        for (var t : transformationsJson) {
+                            System.out.println("Transformation: " + t);
+                            t.folderPath = transformationDir.getAbsolutePath();
+                            transformations.put(t.name, t);
+                        }
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                    /*
                     File atlFile = findFileWithExtension(transformationDir, ".atl");
                     if (atlFile == null) {
                         continue; // Skip if no ATL file found
@@ -95,8 +116,8 @@ public class TransformationManager {
                             }
                         }
                     }
-
                     transformations.put(transformation.id, transformation);
+                    // */
                 }
             }
         }
@@ -183,22 +204,21 @@ public class TransformationManager {
 
         // Create new transformation
         Transformation transformation = new Transformation();
-        transformation.id = newId;
         transformation.name = name;
-        transformation.atlFile = atlFilePath;
+        transformation.atlFile = List.of(atlFilePath);
 
         // Add input metamodels
         for (int i = 0; i < inputMetamodelPaths.size(); i++) {
-            transformation.SourceMetamodels.put("input" + (i + 1), inputMetamodelPaths.get(i));
+            transformation.inputMetamodels.add(inputMetamodelPaths.get(i));
         }
 
         // Add output metamodels
         for (int i = 0; i < outputMetamodelPaths.size(); i++) {
-            transformation.TargetMetamodels.put("output" + (i + 1), outputMetamodelPaths.get(i));
+            transformation.outputMetamodels.add(outputMetamodelPaths.get(i));
         }
 
         // Save the transformation in the map
-        transformations.put(newId, transformation);
+        transformations.put(name, transformation);
 
         return transformation;
     }
@@ -207,11 +227,9 @@ public class TransformationManager {
         return runner.applyTransformation(inputFile, transformation);
     }
 
-    public void deleteTransformation(int int1) {
-
-        String name = transformations.get(int1).name;
+    public void deleteTransformation(String name) {
         // delete the transformation from the map
-        transformations.remove(int1);
+        transformations.remove(name);
         // delete the folder of the transformation
         File transformationDir = new File("src/main/resources/transformations/" + name);
         if (transformationDir.exists()) {
@@ -225,7 +243,7 @@ public class TransformationManager {
         System.out.println(" the whole Transformation to delete: " + transformation);
         System.out.println(getAllTransformations());
         if (transformation != null) {
-            deleteTransformation(transformation.id);
+            deleteTransformation(transformation.name);
             System.out.println("Transformation deleted: " + idOrName);
         }
     }
