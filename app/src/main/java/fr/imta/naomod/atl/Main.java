@@ -54,6 +54,7 @@ public class Main {
             // Get request parameters
             String name = ctx.request().getParam("name");
             String atlFilePath = ctx.request().getParam("atlFilePath");
+            String description = ctx.request().getParam("description"); 
             
             // Get input metamodel paths as a list
             List<String> inputMetamodelPaths = new ArrayList<>();
@@ -84,7 +85,7 @@ public class Main {
             try {
                 // Add transformation with multiple metamodels
                 Transformation transformation = transformationManager.addTransformation(name, atlFilePath,
-                        inputMetamodelPaths, outputMetamodelPaths);
+                        inputMetamodelPaths, outputMetamodelPaths,description);
                 ctx.response().setStatusCode(201);
                 ctx.json(transformation);
             } catch (IOException e) {
@@ -169,19 +170,11 @@ public class Main {
         router.delete("/transformation/:idOrName").handler(ctx -> {
             String idOrName = ctx.pathParam("idOrName");
 
-            try {
-                int id = Integer.parseInt(idOrName);
-                // Delete by ID
-                transformationManager.deleteTransformation(id);
-                ctx.response().setStatusCode(200).end("Transformation deleted by ID");
-            } catch (NumberFormatException e) {
-                // If it's not an integer, assume it's a name
-                System.out.println("Deleting by name: " + idOrName);
-                transformationManager.deleteTransformationByName(idOrName);
-                ctx.response().setStatusCode(200).end("Transformation deleted by name" + idOrName);
-            } catch (Exception e) {
-                ctx.response().setStatusCode(500).end("An error occurred: " + e.getMessage());
-            }
+            // If it's not an integer, assume it's a name
+            System.out.println("Deleting by name: " + idOrName);
+            transformationManager.deleteTransformationByName(idOrName);
+            ctx.response().setStatusCode(200).end("Transformation deleted by name" + idOrName);
+
         });
 
         server.createHttpServer().requestHandler(router).listen(8080);

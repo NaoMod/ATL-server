@@ -1,13 +1,25 @@
 package fr.imta.naomod.atl;
 
-import java.util.Map;
-import java.util.HashMap;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Transformation {
-    public int id;
     public String name;
-    public String atlFile;
-    public Map<String, String> SourceMetamodels = new HashMap<>();
-    public Map<String, String> TargetMetamodels = new HashMap<>();
-    
+    public List<String> atlFile;
+
+    public String folderPath;
+
+    public String compiler;
+
+    @JsonProperty("input_metamodels")
+    public List<String> inputMetamodels = new ArrayList<>();
+
+    @JsonProperty("output_metamodels")
+    public List<String> outputMetamodels = new ArrayList<>();
+    public String description;
 }
