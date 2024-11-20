@@ -1,14 +1,21 @@
 package fr.imta.naomod.atl;
-
+import java.nio.file.Files;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
+
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import fr.imta.naomod.atl.SearchResult;
 import java.util.ArrayList;
+
 public class Main {
     private Vertx server;
     private TransformationManager transformationManager;
@@ -93,6 +100,64 @@ public class Main {
             }
         });
 
+
+        router.get("/debug/transformations").handler(ctx -> {
+            List<Transformation> allTransformations = transformationManager.getAllTransformations();
+            System.out.println("Total transformations: " + allTransformations.size());
+            for (Transformation t : allTransformations) {
+                System.out.println("Name: " + t.name);
+                System.out.println("ATL files: " + t.atlFile);
+                System.out.println("Folder: " + t.folderPath);
+            }
+            ctx.json(allTransformations);
+        });
+
+
+        // Search for a term in all atl files transformations
+
+        router.get("/transformations/search").handler(ctx -> {
+            String searchTerm = ctx.request().getParam("query");
+            
+            if (searchTerm == null || searchTerm.trim().isEmpty()) {
+                ctx.response().setStatusCode(400).end("Search query is required");
+                return;
+            }
+        
+            try {
+                List<Transformation> allTransformations = transformationManager.getAllTransformations();
+                List<SearchResult> results = new ArrayList<>();
+                
+                for (Transformation transformation : allTransformations) {
+                    if (transformation.atlFile != null && !transformation.atlFile.isEmpty()) {
+                        for (String atlFilePath : transformation.atlFile) {
+                            try {
+                                File file = new File(transformation.folderPath, atlFilePath);                                
+                                if (file.exists()) {
+                                    String atlContent = Files.readString(file.toPath());                                    
+                                    if (atlContent.toLowerCase().contains(searchTerm.toLowerCase())) {
+                                        results.add(new SearchResult(
+                                            transformation.name,
+                                            transformation.atlFile,
+                                            highlightSearchTerm(atlContent, searchTerm)
+                                        ));
+                                    }
+                                }
+                            } catch (IOException e) {
+                                System.err.println("Error reading file " + atlFilePath + ": " + e.getMessage());
+                            }
+                        }
+                    }
+                }     
+                ctx.json(results);
+            } catch (Exception e) {
+                e.printStackTrace();
+                ctx.response()
+                    .setStatusCode(500)
+                    .end("Error searching transformations: " + e.getMessage());
+            }
+        });
+
+        // Apply a transformation by ID or name
         router.post("/transformation/:idOrName/apply").handler(ctx -> {
             List<FileUpload> uploads = ctx.fileUploads();
             
@@ -111,7 +176,7 @@ public class Main {
                         // If not an integer, treat as name
                         transformation = transformationManager.getTransformationByName(idOrName);
                     }
-                    
+                     
                     if (transformation == null) {
                         ctx.response()
                             .setStatusCode(404)
@@ -130,6 +195,7 @@ public class Main {
             }
         });
 
+        // Apply a chain of transformations 
         router.post("/transformation/chain").handler(ctx -> {
             try {
                 // Get the transformation chain from form field
@@ -177,7 +243,31 @@ public class Main {
 
         });
 
+    
         server.createHttpServer().requestHandler(router).listen(8080);
+    }
+
+    // Highlight the search term in the content and return a context around it
+    private static String highlightSearchTerm(String content, String searchTerm) {
+
+        int index = content.toLowerCase().indexOf(searchTerm.toLowerCase());
+        if (index == -1) return "";       
+        // Extract a cleaner context (about 50 chars before and after)
+        int contextStart = Math.max(0, index - 50);
+        int contextEnd = Math.min(content.length(), index + searchTerm.length() + 50);
+        
+        // Find the start of the current line
+        while (contextStart > 0 && content.charAt(contextStart) != '\n') {
+            contextStart--;
+        }
+        
+        // Find the end of the current line
+        while (contextEnd < content.length() && content.charAt(contextEnd) != '\n') {
+            contextEnd++;
+        }
+        
+        String context = content.substring(contextStart, contextEnd).trim();
+        return context.replaceAll("(?i)" + Pattern.quote(searchTerm), "**$0**");
     }
 
     public static void main(String[] args) {

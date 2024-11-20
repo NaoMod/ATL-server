@@ -18,6 +18,7 @@ import org.eclipse.m2m.atl.emftvm.Model;
 import org.eclipse.m2m.atl.emftvm.compiler.AtlToEmftvmCompiler;
 import org.eclipse.m2m.atl.emftvm.impl.resource.EMFTVMResourceFactoryImpl;
 import org.eclipse.m2m.atl.emftvm.util.DefaultModuleResolver;
+import org.eclipse.m2m.atl.engine.parser.AtlParser;
 
 import io.netty.handler.ssl.PemPrivateKey;
 
@@ -37,6 +38,10 @@ public class EMFTVMRunner implements ATLRunner {
         resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
             "emftvm",
             new EMFTVMResourceFactoryImpl()
+        );
+        resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
+            "atl",
+            new AtlParser()
         );
         resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
             "ecore",
