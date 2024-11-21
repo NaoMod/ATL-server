@@ -1,13 +1,8 @@
-package fr.imta.naomod.atl;
+package fr.imta.naomod.atl.runners;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EPackage;
-import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.resource.Resource;
-import org.eclipse.emf.ecore.resource.ResourceSet;
-import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
-import org.eclipse.emf.ecore.xmi.impl.EcoreResourceFactoryImpl;
-import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.m2m.atl.core.emf.EMFInjector;
 import org.eclipse.m2m.atl.core.emf.EMFModelFactory;
 import org.eclipse.m2m.atl.core.emf.EMFReferenceModel;
@@ -16,73 +11,50 @@ import org.eclipse.m2m.atl.emftvm.ExecEnv;
 import org.eclipse.m2m.atl.emftvm.Metamodel;
 import org.eclipse.m2m.atl.emftvm.Model;
 import org.eclipse.m2m.atl.emftvm.compiler.AtlToEmftvmCompiler;
-import org.eclipse.m2m.atl.emftvm.impl.resource.EMFTVMResourceFactoryImpl;
 import org.eclipse.m2m.atl.emftvm.util.DefaultModuleResolver;
-import org.eclipse.m2m.atl.engine.parser.AtlParser;
 
-import io.netty.handler.ssl.PemPrivateKey;
+import fr.imta.naomod.atl.Transformation;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
-public class EMFTVMRunner implements ATLRunner {
-    private ResourceSet resourceSet;
+public class EMFTVMRunner extends ATLRunner {
 
-    public EMFTVMRunner() {
-        resourceSet = new ResourceSetImpl();
-
-        resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
-            "emftvm",
-            new EMFTVMResourceFactoryImpl()
-        );
-        resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
-            "atl",
-            new AtlParser()
-        );
-        resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
-            "ecore",
-            new EcoreResourceFactoryImpl()
-        );
-        resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
-            "xmi",
-            new XMIResourceFactoryImpl()
-        );
-        resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
-            "",
-            new XMIResourceFactoryImpl()
-        );
-
-        EPackage.Registry.INSTANCE.put(EcorePackage.eNS_URI, EcorePackage.eINSTANCE);
-    }
-
-    public String applyTransformation(String source, Transformation transfo) throws IOException {
+    @Override
+    public String applyTransformation(Map<String, String> sources, Transformation transfo) throws IOException {
         ExecEnv execEnv = EmftvmFactory.eINSTANCE.createExecEnv();
 
-        // Register input metamodels
-        for (String metamodel : transfo.inputMetamodels) {
-            registerMetamodel(execEnv, transfo.folderPath + "/" + metamodel);
+        // Register input metamodels and load corresponding models
+
+        // Load input model, we assume input model contains all sources
+        for (fr.imta.naomod.atl.Metamodel metamodel : transfo.inputMetamodels) {
+            Model sourceModel = loadModel(sources.get(metamodel.name));
+            registerMetamodel(execEnv, transfo.folderPath + "/" + metamodel.getPath());
+
+            execEnv.registerInputModel(metamodel.name, sourceModel);
         }
 
         // Register output metamodels
-        for (String metamodel : transfo.outputMetamodels) {
-            registerMetamodel(execEnv,  transfo.folderPath + "/" + metamodel);
+        Map<String, Resource> targets = new HashMap<>();
+        for (fr.imta.naomod.atl.Metamodel metamodel : transfo.outputMetamodels) {
+            // Create and register output model
+            String targetPath = UUID.randomUUID() + ".xmi";
+            Model targetModel = createModel(targetPath);
+            targets.put(metamodel.name, targetModel.getResource());
+            execEnv.registerOutputModel(metamodel.name, targetModel);
+            registerMetamodel(execEnv,  transfo.folderPath + "/" + metamodel.getPath());
         }
 
         // Compile the ATL module
         for (var file : transfo.atlFile)
 		    compileATLModule(transfo.folderPath + "/" + file);
-        // Load input model
-        Model sourceModel = loadModel(source);
-        execEnv.registerInputModel("IN", sourceModel);
 
-        // Create and register output model
-        String targetPath = UUID.randomUUID() + ".xmi";
-        Model targetModel = createModel(targetPath);
-        execEnv.registerOutputModel("OUT", targetModel);
 
         // Load and run the transformation
         Path transofPath = Path.of( transfo.folderPath + "/" + transfo.atlFile.get(0)); //fixme: only one file for now
@@ -90,11 +62,21 @@ public class EMFTVMRunner implements ATLRunner {
         execEnv.loadModule(moduleResolver, transofPath.getFileName().toString().replace(".atl", ""));
         execEnv.run(null);
 
+        StringBuilder result = new StringBuilder();
         // Save and return the result
-        targetModel.getResource().save(null);
-        String result = Files.readString(Path.of(targetPath));
-        Files.delete(Path.of(targetPath));
-        return result;
+        for (var out : targets.entrySet()) {
+            Resource r = out.getValue();
+            String name = out.getKey();
+            r.save(null);
+            Path p = Path.of(r.getURI().path());
+            String content = Files.readString(p);
+            Files.delete(p);
+
+            result.append("***************" + name + "*****************\n");
+            result.append(content);
+            result.append("**********************************\n");
+        }
+        return result.toString();
     }
 
     private void registerMetamodel(ExecEnv execEnv, String path) throws IOException {

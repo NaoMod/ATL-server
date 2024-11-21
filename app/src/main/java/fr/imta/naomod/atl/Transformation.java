@@ -17,9 +17,9 @@ public class Transformation {
     public String compiler;
 
     @JsonProperty("input_metamodels")
-    public List<String> inputMetamodels = new ArrayList<>();
+    public List<Metamodel> inputMetamodels = new ArrayList<>();
 
     @JsonProperty("output_metamodels")
-    public List<String> outputMetamodels = new ArrayList<>();
+    public List<Metamodel> outputMetamodels = new ArrayList<>();
     public String description;
 }

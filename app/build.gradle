@@ -27,6 +27,7 @@ dependencies {
     implementation libs.guava
 
     // ATL
+    implementation 'org.eclipse.platform:org.eclipse.core.runtime:3.31.100' // used by EMFVM just to check if it is running in Eclipse or not
 	implementation 'org.eclipse.m2m.atl:org.eclipse.m2m.atl.emftvm:4.6.0'
 	implementation 'org.eclipse.m2m.atl:org.eclipse.m2m.atl.emftvm.compiler:4.6.0'
 

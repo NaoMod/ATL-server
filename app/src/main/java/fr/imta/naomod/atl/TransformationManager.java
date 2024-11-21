@@ -7,6 +7,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import fr.imta.naomod.atl.runners.ATLRunner;
+import fr.imta.naomod.atl.runners.EMFTVMRunner;
+import fr.imta.naomod.atl.runners.EMFVMRunner;
 import io.vertx.core.json.Json;
 
 import java.nio.file.Files;
@@ -16,11 +19,12 @@ import java.nio.file.Paths;
 
 public class TransformationManager {
     private Map<String, Transformation> transformations;
-    private ATLRunner runner;
+    private Map<String, ATLRunner> runners = new HashMap<>();
 
     public TransformationManager() {
         transformations = new HashMap<>();
-        runner = new EMFTVMRunner();
+        runners.put("EMFTVM", new EMFTVMRunner());
+        runners.put("EMFVM", new EMFVMRunner());
         loadTransformations();
     }
 
@@ -40,16 +44,13 @@ public class TransformationManager {
             dirsToProcess.add(userDir);
         }
 
-        int idCounter = 1; // Counter for generating unique IDs
-
         // Process each directory
         for (File dir : dirsToProcess) {
             File[] transformationDirs = dir.listFiles(File::isDirectory);
 
             if (transformationDirs != null) {
                 for (File transformationDir : transformationDirs) {
-                    System.out.println("Processing transformation: " + transformationDir.getName());
-                    String transformationName = transformationDir.getName();
+                    System.out.println("Processing folder: " + transformationDir.getName());
                     File config = findFileWithExtension(transformationDir, "json");
 
                     if (config == null) continue;
@@ -59,7 +60,7 @@ public class TransformationManager {
                         content = Files.readString(config.toPath());
                         Transformation[] transformationsJson = Json.decodeValue(content, Transformation[].class);
                         for (var t : transformationsJson) {
-                            System.out.println("Transformation: " + t);
+                            System.out.println("Transformation: " + t.name);
                             t.folderPath = transformationDir.getAbsolutePath();
                             transformations.put(t.name, t);
                         }
@@ -67,57 +68,6 @@ public class TransformationManager {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
-                    /*
-                    File atlFile = findFileWithExtension(transformationDir, ".atl");
-                    if (atlFile == null) {
-                        continue; // Skip if no ATL file found
-                    }
-
-                    Transformation transformation = new Transformation();
-                    transformation.id = idCounter++;
-                    transformation.name = transformationName;
-                    transformation.atlFile = atlFile.getAbsolutePath();
-                    // Load the description from a description.txt file if it exists
-                    File descFile = new File(transformationDir, "description.txt");
-                    if (descFile.exists()) {
-                        try {
-                            transformation.description = Files.readString(descFile.toPath()).trim();
-                        } catch (IOException e) {
-                            transformation.description = "Error reading description: " + e.getMessage();
-                        }
-                    } else {
-                        transformation.description = "No description available";
-                    }
-
-                    String[] parts = transformationName.split("2");
-                    if (parts.length == 2) {
-                        // Identify metamodels by looking at .ecore files in the directory
-                        File[] ecoreFiles = transformationDir.listFiles((dir1, name) -> name.endsWith(".ecore"));
-
-                        if (ecoreFiles != null) {
-                            for (File ecoreFile : ecoreFiles) {
-                                String metamodelName = ecoreFile.getName().replace(".ecore", "");
-
-                                // If metamodel is part of input names (before 2)
-                                if (parts[0].contains(metamodelName)) {
-                                    Map<String, String> inputMap = findEcoreFile(transformationDir, metamodelName);
-                                    if (inputMap != null) {
-                                        transformation.SourceMetamodels.putAll(inputMap);
-                                    }
-                                }
-
-                                // If metamodel is part of output names (after 2)
-                                if (parts[1].contains(metamodelName)) {
-                                    Map<String, String> outputMap = findEcoreFile(transformationDir, metamodelName);
-                                    if (outputMap != null) {
-                                        transformation.TargetMetamodels.putAll(outputMap);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    transformations.put(transformation.id, transformation);
-                    // */
                 }
             }
         }
@@ -126,17 +76,6 @@ public class TransformationManager {
     private File findFileWithExtension(File dir, String extension) {
         File[] files = dir.listFiles((d, name) -> name.endsWith(extension));
         return (files != null && files.length > 0) ? files[0] : null;
-    }
-
-    private Map<String, String> findEcoreFile(File dir, String baseName) {
-        Map<String, String> result = new HashMap<>();
-        File[] ecoreFiles = dir.listFiles(
-                (d, name) -> name.toLowerCase().startsWith(baseName.toLowerCase()) && name.endsWith(".ecore"));
-        if (ecoreFiles != null && ecoreFiles.length > 0) {
-            String metamodelName = ecoreFiles[0].getName().replace(".ecore", "");
-            result.put(metamodelName, ecoreFiles[0].getAbsolutePath());
-        }
-        return result;
     }
 
     public List<Transformation> getAllTransformations() {
@@ -209,12 +148,14 @@ public class TransformationManager {
 
         // Add input metamodels
         for (int i = 0; i < inputMetamodelPaths.size(); i++) {
-            transformation.inputMetamodels.add(inputMetamodelPaths.get(i));
+            Metamodel m = new Metamodel("IN", inputMetamodelPaths.get(i)); // fixme: name of MM should be provided in request
+            transformation.inputMetamodels.add(m);
         }
 
         // Add output metamodels
         for (int i = 0; i < outputMetamodelPaths.size(); i++) {
-            transformation.outputMetamodels.add(outputMetamodelPaths.get(i));
+            Metamodel m = new Metamodel("OUT", outputMetamodelPaths.get(i)); // fixme: name of MM should be provided in request
+            transformation.outputMetamodels.add(m);
         }
 
         // Save the transformation in the map
@@ -223,8 +164,8 @@ public class TransformationManager {
         return transformation;
     }
 
-    public String applyTransformation(Transformation transformation, String inputFile) throws IOException {
-        return runner.applyTransformation(inputFile, transformation);
+    public String applyTransformation(Transformation transformation, Map<String, String> inputFiles) throws Exception {
+        return runners.get(transformation.compiler).applyTransformation(inputFiles, transformation);
     }
 
     public void deleteTransformation(String name) {
@@ -260,7 +201,7 @@ public class TransformationManager {
     }
 
     public String applyTransformationChain(List<String> transformationNames, String initialInputFile)
-            throws IOException {
+            throws Exception {
         if (transformationNames == null || transformationNames.isEmpty()) {
             throw new IllegalArgumentException("Transformation chain cannot be empty");
         }
@@ -279,7 +220,9 @@ public class TransformationManager {
                 }
 
                 // Apply transformation
-                String output = runner.applyTransformation(currentInputFile, currentTransformation);
+                Map<String, String> input = new HashMap<>();
+                input.put("IN", currentInputFile); //fixme: we assume that intermediate transformations only have 1 input & ouput
+                String output = runners.get(currentTransformation.compiler).applyTransformation(input, currentTransformation);
 
                 if (i < transformationNames.size() - 1) {
                     // Save intermediate result to temp file
