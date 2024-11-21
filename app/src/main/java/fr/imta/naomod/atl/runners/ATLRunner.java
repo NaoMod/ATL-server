@@ -1,5 +1,7 @@
 package fr.imta.naomod.atl.runners;
 
+import java.util.Map;
+
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.resource.ResourceSet;
@@ -36,5 +38,5 @@ public abstract class ATLRunner {
         EPackage.Registry.INSTANCE.put(EcorePackage.eNS_URI, EcorePackage.eINSTANCE);
     }
 
-    public abstract String applyTransformation(String source, Transformation transfo) throws Exception;
+    public abstract String applyTransformation(Map<String, String> sources, Transformation transfo) throws Exception;
 }

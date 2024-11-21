@@ -1,26 +1,29 @@
 package fr.imta.naomod.atl.runners;
 
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.CollationElementIterator;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.emf.common.util.URI;
-import org.eclipse.emf.ecore.EcorePackage;
-import org.eclipse.emf.ecore.resource.ResourceSet;
-import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
-import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
+import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.m2m.atl.core.ATLCoreException;
 import org.eclipse.m2m.atl.core.emf.EMFInjector;
 import org.eclipse.m2m.atl.core.emf.EMFModel;
 import org.eclipse.m2m.atl.core.emf.EMFModelFactory;
 import org.eclipse.m2m.atl.core.emf.EMFReferenceModel;
 import org.eclipse.m2m.atl.core.launch.ILauncher;
+import org.eclipse.m2m.atl.engine.compiler.AtlCompiler;
+import org.eclipse.m2m.atl.engine.compiler.AtlStandaloneCompiler;
+import org.eclipse.m2m.atl.engine.compiler.CompileTimeError;
 import org.eclipse.m2m.atl.engine.emfvm.launch.EMFVMLauncher;
 
 import fr.imta.naomod.atl.Metamodel;
@@ -29,43 +32,49 @@ import fr.imta.naomod.atl.Transformation;
 public class EMFVMRunner extends ATLRunner {
 
     @Override
-    public String applyTransformation(String source, Transformation transfo) throws ATLCoreException, IOException {
+    public String applyTransformation(Map<String, String> sources, Transformation transfo) throws ATLCoreException, IOException {
         // Create factory and injector
 		EMFModelFactory factory = new EMFModelFactory();
 		EMFInjector emfinjector = new EMFInjector();
-
-        // load source metamodel
-        EMFReferenceModel inMetamodel = (EMFReferenceModel) factory.newReferenceModel();
-        for (Metamodel inMM : transfo.inputMetamodels) {
-            emfinjector.inject(inMetamodel, inMM.metamodel);
-        }
-
-        // load target metamodel
-        EMFReferenceModel outMetamodel = (EMFReferenceModel) factory.newReferenceModel();
-        for (Metamodel outMM : transfo.outputMetamodels) {
-            emfinjector.inject(outMetamodel, outMM.metamodel);
-        }
-
-        // load source model
-        EMFModel input = (EMFModel) factory.newModel(inMetamodel);
-        emfinjector.inject(input, source);
-
-        // create target model
-        EMFModel output = (EMFModel) factory.newModel(outMetamodel);
+        String pathPrefix = transfo.folderPath;
 
         EMFVMLauncher launcher = new EMFVMLauncher();
         launcher.initialize(Collections.emptyMap());
 
-		// fixme: we assume only one input/output MM
-        launcher.addInModel(input, "IN", transfo.inputMetamodels.get(0).getMetamodelName());
-		launcher.addOutModel(output, "OUT", transfo.outputMetamodels.get(0).getMetamodelName());
+
+        // load source metamodel
+        for (Metamodel inMM : transfo.inputMetamodels) {
+            EMFReferenceModel inMetamodel = (EMFReferenceModel) factory.newReferenceModel();
+            emfinjector.inject(inMetamodel, pathPrefix + "/" + inMM.metamodel);
+
+            // load source model
+            EMFModel input = (EMFModel) factory.newModel(inMetamodel);
+            emfinjector.inject(input, sources.get(inMM.name));
+
+            launcher.addInModel(input, inMM.name, inMM.getMetamodelName(pathPrefix));
+        }
+
+        // load target metamodel
+        Map<String, EMFModel> outputs = new HashMap<>();
+        for (Metamodel outMM : transfo.outputMetamodels) {
+            EMFReferenceModel outMetamodel = (EMFReferenceModel) factory.newReferenceModel();
+            emfinjector.inject(outMetamodel, pathPrefix + "/" +  outMM.metamodel);
+
+            // create target model
+            EMFModel output = (EMFModel) factory.newModel(outMetamodel);
+            
+            launcher.addOutModel(output, outMM.name, outMM.getMetamodelName(pathPrefix));
+
+            outputs.put(outMM.name, output);
+        }
 
 		// if necessary
 		// launcher.addLibrary("strings", new FileInputStream(
 		// 	"../../../data/Class2Relational/ATLFile/strings.asm"
 		// )); 
-
-		// TODO
+        String atlPath = pathPrefix + "/" + transfo.atlFile.get(0);
+        String asmPath =  atlPath.replace(".atl", ".asm");
+		compileASM(atlPath, asmPath);
 		InputStream asm = new FileInputStream(asmPath);
 		
 		launcher.launch(
@@ -74,16 +83,40 @@ public class EMFVMRunner extends ATLRunner {
 				Collections.<String, Object> emptyMap(),
 				new Object[] {asm} );
 
-		String targetPath = UUID.randomUUID() + ".xmi";
-		output.getResource().setURI(URI.createURI(targetPath));
-		output.getResource().save(Collections.emptyMap());
+        StringBuilder results = new StringBuilder();
+        for (var out : outputs.entrySet()) {
+            String targetPath = UUID.randomUUID() + ".xmi";
+            Resource r = out.getValue().getResource();
+            String name = out.getKey();
+            r.setURI(URI.createURI(targetPath));
+            r.save(Collections.emptyMap());
+    
+            String result = Files.readString(Path.of(targetPath));
+            Files.delete(Path.of(targetPath));
 
-		String result = Files.readString(Path.of(targetPath));
-        Files.delete(Path.of(targetPath));
-        return result;
+            if (outputs.size() > 1) results.append("***************" + name + "*****************\n");
+            results.append(result);
+            if (outputs.size() > 1) results.append("**********************************\n");
+        }
+        return results.toString();
     }
 
-	private void compileASM(/* args */) {
+	private void compileASM(String atlPath, String asmPath) throws FileNotFoundException, UnsupportedOperationException {
+        AtlStandaloneCompiler compiler = AtlCompiler.getCompiler(AtlCompiler.DEFAULT_COMPILER_NAME);
 
+        // do not compile if it already exists
+        if (!Path.of(asmPath).toFile().exists()) {
+            CompileTimeError[] errors =  compiler.compile(new FileReader(atlPath), asmPath);
+
+            boolean hasError = false;
+            for (CompileTimeError e : errors) {
+                System.err.println(e.getSeverity() + " - " + e.getLocation() + " - " + e.getDescription());
+                if (e.getSeverity().equals("error")) {
+                    hasError = true;
+                }
+            }
+            if (hasError)
+                throw new UnsupportedOperationException();
+        }
 	}
 }

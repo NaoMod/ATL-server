@@ -7,8 +7,10 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.ArrayList;
+import java.util.HashMap;
 public class Main {
     private Vertx server;
     private TransformationManager transformationManager;
@@ -118,11 +120,17 @@ public class Main {
                             .end("Transformation not found with ID or name: " + idOrName);
                         return;
                     }
-        
-                    String result = transformationManager.applyTransformation(transformation,
-                            uploads.get(0).uploadedFileName());
+                    
+                    Map<String, String> inputs = new HashMap<>();
+                    
+                    for (var upload : uploads) {
+                        inputs.put(upload.name(), upload.uploadedFileName());
+                    }
+
+                    String result = transformationManager.applyTransformation(transformation, inputs);
                     ctx.response().setStatusCode(200).send(result);
-                } catch (IOException e) {
+                } catch (Exception e) {
+                    e.printStackTrace();
                     ctx.response()
                         .setStatusCode(500)
                         .end("Error applying transformation");
