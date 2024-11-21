@@ -1,4 +1,4 @@
-package fr.imta.naomod.atl;
+package fr.imta.naomod.atl.runners;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EPackage;
@@ -19,6 +19,7 @@ import org.eclipse.m2m.atl.emftvm.compiler.AtlToEmftvmCompiler;
 import org.eclipse.m2m.atl.emftvm.impl.resource.EMFTVMResourceFactoryImpl;
 import org.eclipse.m2m.atl.emftvm.util.DefaultModuleResolver;
 
+import fr.imta.naomod.atl.Transformation;
 import io.netty.handler.ssl.PemPrivateKey;
 
 import java.io.FileInputStream;
@@ -28,32 +29,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
 
-public class EMFTVMRunner implements ATLRunner {
-    private ResourceSet resourceSet;
+public class EMFTVMRunner extends ATLRunner {
 
-    public EMFTVMRunner() {
-        resourceSet = new ResourceSetImpl();
-
-        resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
-            "emftvm",
-            new EMFTVMResourceFactoryImpl()
-        );
-        resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
-            "ecore",
-            new EcoreResourceFactoryImpl()
-        );
-        resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
-            "xmi",
-            new XMIResourceFactoryImpl()
-        );
-        resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put(
-            "",
-            new XMIResourceFactoryImpl()
-        );
-
-        EPackage.Registry.INSTANCE.put(EcorePackage.eNS_URI, EcorePackage.eINSTANCE);
-    }
-
+    @Override
     public String applyTransformation(String source, Transformation transfo) throws IOException {
         ExecEnv execEnv = EmftvmFactory.eINSTANCE.createExecEnv();
 
