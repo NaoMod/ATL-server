@@ -26,7 +26,7 @@ import org.eclipse.m2m.atl.engine.compiler.AtlStandaloneCompiler;
 import org.eclipse.m2m.atl.engine.compiler.CompileTimeError;
 import org.eclipse.m2m.atl.engine.emfvm.launch.EMFVMLauncher;
 
-import fr.imta.naomod.atl.Metamodel;
+import fr.imta.naomod.atl.NamedFile;
 import fr.imta.naomod.atl.Transformation;
 
 public class EMFVMRunner extends ATLRunner {
@@ -43,36 +43,45 @@ public class EMFVMRunner extends ATLRunner {
 
 
         // load source metamodel
-        for (Metamodel inMM : transfo.inputMetamodels) {
+        for (NamedFile inMM : transfo.inputMetamodels) {
             EMFReferenceModel inMetamodel = (EMFReferenceModel) factory.newReferenceModel();
-            emfinjector.inject(inMetamodel, pathPrefix + "/" + inMM.metamodel);
+            emfinjector.inject(inMetamodel, pathPrefix + "/" + inMM.path);
 
             // load source model
             EMFModel input = (EMFModel) factory.newModel(inMetamodel);
             emfinjector.inject(input, sources.get(inMM.name));
 
-            launcher.addInModel(input, inMM.name, inMM.getMetamodelName(pathPrefix));
+            launcher.addInModel(input, inMM.name, inMM.getFileName(pathPrefix));
         }
 
         // load target metamodel
         Map<String, EMFModel> outputs = new HashMap<>();
-        for (Metamodel outMM : transfo.outputMetamodels) {
+        for (NamedFile outMM : transfo.outputMetamodels) {
             EMFReferenceModel outMetamodel = (EMFReferenceModel) factory.newReferenceModel();
-            emfinjector.inject(outMetamodel, pathPrefix + "/" +  outMM.metamodel);
+            emfinjector.inject(outMetamodel, pathPrefix + "/" +  outMM.path);
 
             // create target model
             EMFModel output = (EMFModel) factory.newModel(outMetamodel);
             
-            launcher.addOutModel(output, outMM.name, outMM.getMetamodelName(pathPrefix));
+            launcher.addOutModel(output, outMM.name, outMM.getFileName(pathPrefix));
 
             outputs.put(outMM.name, output);
         }
 
-		// if necessary
-		// launcher.addLibrary("strings", new FileInputStream(
-		// 	"../../../data/Class2Relational/ATLFile/strings.asm"
-		// )); 
-        String atlPath = pathPrefix + "/" + transfo.atlFile.get(0);
+        // we load (and compile if needed) required libraries
+        for (var lib : transfo.libraries) {
+            String asmPath = pathPrefix + "/" + lib.path;
+            // lib does not end with .asm, so we compile it
+            if (!lib.path.endsWith("asm")) {
+                String compiledPath = asmPath.replaceAll(".atl", ".asm");
+                compileASM(asmPath, compiledPath);
+                asmPath = compiledPath;
+            }
+
+            launcher.addLibrary(lib.name, new FileInputStream(asmPath));
+
+        }
+        String atlPath = pathPrefix + "/" + transfo.atlFile;
         String asmPath =  atlPath.replace(".atl", ".asm");
 		compileASM(atlPath, asmPath);
 		InputStream asm = new FileInputStream(asmPath);

@@ -10,16 +10,20 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Transformation {
     public String name;
-    public List<String> atlFile;
+
+    public String atlFile;
+
+    public List<NamedFile> libraries = new ArrayList<>();
 
     public String folderPath;
 
     public String compiler;
 
+    public String description;
+
     @JsonProperty("input_metamodels")
-    public List<Metamodel> inputMetamodels = new ArrayList<>();
+    public List<NamedFile> inputMetamodels = new ArrayList<>();
 
     @JsonProperty("output_metamodels")
-    public List<Metamodel> outputMetamodels = new ArrayList<>();
-    public String description;
+    public List<NamedFile> outputMetamodels = new ArrayList<>();
 }

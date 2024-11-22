@@ -13,6 +13,7 @@ import org.eclipse.m2m.atl.emftvm.Model;
 import org.eclipse.m2m.atl.emftvm.compiler.AtlToEmftvmCompiler;
 import org.eclipse.m2m.atl.emftvm.util.DefaultModuleResolver;
 
+import fr.imta.naomod.atl.NamedFile;
 import fr.imta.naomod.atl.Transformation;
 
 import java.io.FileInputStream;
@@ -33,31 +34,30 @@ public class EMFTVMRunner extends ATLRunner {
         // Register input metamodels and load corresponding models
 
         // Load input model, we assume input model contains all sources
-        for (fr.imta.naomod.atl.Metamodel metamodel : transfo.inputMetamodels) {
+        for (NamedFile metamodel : transfo.inputMetamodels) {
             Model sourceModel = loadModel(sources.get(metamodel.name));
-            registerMetamodel(execEnv, transfo.folderPath + "/" + metamodel.getPath());
+            registerMetamodel(execEnv, transfo.folderPath + "/" + metamodel.path);
 
             execEnv.registerInputModel(metamodel.name, sourceModel);
         }
 
         // Register output metamodels
         Map<String, Resource> targets = new HashMap<>();
-        for (fr.imta.naomod.atl.Metamodel metamodel : transfo.outputMetamodels) {
+        for (NamedFile metamodel : transfo.outputMetamodels) {
             // Create and register output model
             String targetPath = UUID.randomUUID() + ".xmi";
             Model targetModel = createModel(targetPath);
             targets.put(metamodel.name, targetModel.getResource());
             execEnv.registerOutputModel(metamodel.name, targetModel);
-            registerMetamodel(execEnv,  transfo.folderPath + "/" + metamodel.getPath());
+            registerMetamodel(execEnv,  transfo.folderPath + "/" + metamodel.path);
         }
 
         // Compile the ATL module
-        for (var file : transfo.atlFile)
-		    compileATLModule(transfo.folderPath + "/" + file);
+        compileATLModule(transfo.folderPath + "/" + transfo.atlFile);
 
 
         // Load and run the transformation
-        Path transofPath = Path.of( transfo.folderPath + "/" + transfo.atlFile.get(0)); //fixme: only one file for now
+        Path transofPath = Path.of( transfo.folderPath + "/" + transfo.atlFile); //fixme: only one file for now
         DefaultModuleResolver moduleResolver = new DefaultModuleResolver(transofPath.getParent() + "/", resourceSet);
         execEnv.loadModule(moduleResolver, transofPath.getFileName().toString().replace(".atl", ""));
         execEnv.run(null);

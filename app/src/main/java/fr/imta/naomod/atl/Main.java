@@ -130,22 +130,20 @@ public class Main {
                 
                 for (Transformation transformation : allTransformations) {
                     if (transformation.atlFile != null && !transformation.atlFile.isEmpty()) {
-                        for (String atlFilePath : transformation.atlFile) {
-                            try {
-                                File file = new File(transformation.folderPath, atlFilePath);                                
-                                if (file.exists()) {
-                                    String atlContent = Files.readString(file.toPath());                                    
-                                    if (atlContent.toLowerCase().contains(searchTerm.toLowerCase())) {
-                                        results.add(new SearchResult(
-                                            transformation.name,
-                                            transformation.atlFile,
-                                            highlightSearchTerm(atlContent, searchTerm)
-                                        ));
-                                    }
+                        try {
+                            File file = new File(transformation.folderPath, transformation.atlFile);
+                            if (file.exists()) {
+                                String atlContent = Files.readString(file.toPath());
+                                if (atlContent.toLowerCase().contains(searchTerm.toLowerCase())) {
+                                    results.add(new SearchResult(
+                                        transformation.name,
+                                        transformation.atlFile,
+                                        highlightSearchTerm(atlContent, searchTerm)
+                                    ));
                                 }
-                            } catch (IOException e) {
-                                System.err.println("Error reading file " + atlFilePath + ": " + e.getMessage());
                             }
+                        } catch (IOException e) {
+                            System.err.println("Error reading file " + transformation.atlFile + ": " + e.getMessage());
                         }
                     }
                 }     

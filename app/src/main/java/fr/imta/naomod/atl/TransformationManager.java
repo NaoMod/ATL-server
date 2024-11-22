@@ -33,7 +33,7 @@ public class TransformationManager {
         List<File> dirsToProcess = new ArrayList<>();
 
         // Add original transformations directory
-        File originalDir = new File("/Users/zakariahachm/Downloads/atl_zoo");
+        File originalDir = new File("/home/goldensuneur/work/atl_zoo");
         if (originalDir.exists()) {
             dirsToProcess.add(originalDir);
         }
@@ -138,23 +138,20 @@ public class TransformationManager {
             Files.copy(Paths.get(outputPath), outputMetamodelFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
 
-        // Generate new ID
-        int newId = transformations.size() + 1;
-
         // Create new transformation
         Transformation transformation = new Transformation();
         transformation.name = name;
-        transformation.atlFile = List.of(atlFilePath);
+        transformation.atlFile = atlFilePath;
 
         // Add input metamodels
         for (int i = 0; i < inputMetamodelPaths.size(); i++) {
-            Metamodel m = new Metamodel("IN", inputMetamodelPaths.get(i)); // fixme: name of MM should be provided in request
+            NamedFile m = new NamedFile("IN", inputMetamodelPaths.get(i)); // fixme: name of MM should be provided in request
             transformation.inputMetamodels.add(m);
         }
 
         // Add output metamodels
         for (int i = 0; i < outputMetamodelPaths.size(); i++) {
-            Metamodel m = new Metamodel("OUT", outputMetamodelPaths.get(i)); // fixme: name of MM should be provided in request
+            NamedFile m = new NamedFile("OUT", outputMetamodelPaths.get(i)); // fixme: name of MM should be provided in request
             transformation.outputMetamodels.add(m);
         }
 
