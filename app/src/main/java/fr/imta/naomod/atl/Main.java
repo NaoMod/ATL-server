@@ -30,6 +30,9 @@ public class Main {
         var router = Router.router(server);
 
         router.route().handler(BodyHandler.create().setDeleteUploadedFilesOnEnd(true));
+        router.route().failureHandler(ctx -> {
+            System.out.println(ctx);
+        });
 
         router.get("/transformations").handler(ctx -> {
             List<Transformation> allTransformations = transformationManager.getAllTransformations();
@@ -160,7 +163,7 @@ public class Main {
         router.post("/transformation/:idOrName/apply").handler(ctx -> {
             List<FileUpload> uploads = ctx.fileUploads();
             
-            if (uploads.size() != 1) {
+            if (uploads.size() == 0) {
                 ctx.fail(503);
             } else {
                 String idOrName = ctx.pathParam("idOrName");
