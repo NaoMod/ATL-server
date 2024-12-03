@@ -97,11 +97,16 @@ public class EMFVMRunner extends ATLRunner {
             String targetPath = UUID.randomUUID() + ".xmi";
             Resource r = out.getValue().getResource();
             String name = out.getKey();
-            r.setURI(URI.createURI(targetPath));
-            r.save(Collections.emptyMap());
-    
-            String result = Files.readString(Path.of(targetPath));
-            Files.delete(Path.of(targetPath));
+            String result = "";
+
+            // resource is null if transformation does not generate anything
+            if (r != null) {
+                r.setURI(URI.createURI(targetPath));
+                r.save(Collections.emptyMap());
+
+                result = Files.readString(Path.of(targetPath));
+                Files.delete(Path.of(targetPath));
+            }
 
             if (outputs.size() > 1) results.append("***************" + name + "*****************\n");
             results.append(result);
