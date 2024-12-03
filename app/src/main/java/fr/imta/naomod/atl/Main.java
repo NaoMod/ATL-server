@@ -8,13 +8,11 @@ import io.vertx.ext.web.handler.BodyHandler;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import fr.imta.naomod.atl.SearchResult;
 import java.util.ArrayList;
 import java.util.HashMap;
 public class Main {
