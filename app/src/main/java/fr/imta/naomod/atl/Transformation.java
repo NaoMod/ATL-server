@@ -21,6 +21,8 @@ public class Transformation {
 
     public String description;
 
+    public Boolean enabled;
+
     @JsonProperty("input_metamodels")
     public List<NamedFile> inputMetamodels = new ArrayList<>();
 

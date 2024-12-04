@@ -35,6 +35,16 @@ public class Main {
             ctx.json(allTransformations);
         });
 
+        router.get("/transformations/enabled").handler(ctx -> {
+            List<Transformation> allTransformations = transformationManager.getAllTransformations();
+            List<Transformation> enabledTransformations = allTransformations.stream()
+                .filter(t -> t.enabled != null && t.enabled)
+                .collect(Collectors.toList());
+            
+            System.out.println("Returning " + enabledTransformations.size() + " enabled transformations");
+            ctx.json(enabledTransformations);
+        });
+
         router.get("/transformation/:idOrName").handler(ctx -> {
             String idOrName = ctx.pathParam("idOrName");
             Transformation transformation = null;
