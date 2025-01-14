@@ -246,19 +246,60 @@ public class Main {
 
         // delete transformation by name or id
 
-        router.delete("/transformation/:idOrName").handler(ctx -> {
-            String idOrName = ctx.pathParam("idOrName");
+        // router.delete("/transformation/:idOrName").handler(ctx -> {
+        //     String idOrName = ctx.pathParam("idOrName");
 
-            // If it's not an integer, assume it's a name
-            System.out.println("Deleting by name: " + idOrName);
-            transformationManager.deleteTransformationByName(idOrName);
-            ctx.response().setStatusCode(200).end("Transformation deleted by name" + idOrName);
+        //     // If it's not an integer, assume it's a name
+        //     System.out.println("Deleting by name: " + idOrName);
+        //     transformationManager.deleteTransformationByName(idOrName);
+        //     ctx.response().setStatusCode(200).end("Transformation deleted by name" + idOrName);
 
+        // });
+
+        //Transformations grouped by their input metamodels
+        router.get("/transformations/byInputMetamodel").handler(ctx -> {
+            List<Transformation> allTransformations = transformationManager.getAllTransformations();
+            Map<String, List<String>> categorizedTransformations = new HashMap<>();
+            
+            // First, categorize all transformations
+            for (Transformation transformation : allTransformations) {
+                if (transformation.inputMetamodels == null || transformation.inputMetamodels.isEmpty()) {
+                    continue;
+                }
+                
+                for (NamedFile inputMetamodel : transformation.inputMetamodels) {
+                    // Skip if path is null or empty
+                    if (inputMetamodel.path == null || inputMetamodel.path.isEmpty()) {
+                        continue;
+                    }
+                    
+                    // Get the filename from the path
+                    String fileName = new File(inputMetamodel.path).getName();
+                    // Get metamodel name (remove .ecore extension)
+                    String metamodelName = fileName.replace(".ecore", "");
+                    
+                    if (!categorizedTransformations.containsKey(metamodelName)) {
+                        categorizedTransformations.put(metamodelName, new ArrayList<>());
+                    }
+                    categorizedTransformations.get(metamodelName).add(transformation.name);
+                }
+            }
+            
+            // Filter to keep only metamodels with more than 2 transformations
+            Map<String, List<String>> filteredTransformations = categorizedTransformations.entrySet().stream()
+                .filter(entry -> entry.getValue().size() > 2)
+                .collect(Collectors.toMap(
+                    Map.Entry::getKey,
+                    Map.Entry::getValue
+                ));
+            
+            ctx.json(filteredTransformations);
         });
 
-    
         server.createHttpServer().requestHandler(router).listen(8080);
     }
+
+        
 
     // Highlight the search term in the content and return a context around it
     private static String highlightSearchTerm(String content, String searchTerm) {
