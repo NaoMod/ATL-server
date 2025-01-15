@@ -19,22 +19,28 @@ This project is a REST API server designed to manage and execute ATL transformat
 **List all transformations:**
 
 ```bash
-curl localhost:8080/transformations
+curl localhost:8080/transformations | jq
 ```
 
-#### Get a Specific Transformation
+**List enabled transformations:**
+
+```bash
+curl localhost:8080/transformations/enabled | jq
+```
+
+**Get a Specific Transformation:**
 
 ```bash
 curl localhost:8080/transformation/Class2Relational
 
 ```
 
-#### Apply a Transformation
+**Apply a Transformation:**
 
 `Unique Metamodels (source & target)`
 
 ```bash
-curl localhost:8080/transformation/Class2Relational/apply -F IN="@./Class.xmi        
+curl localhost:8080/transformation/Class2Relational/apply -F IN="@./Class.xmi"        
 ```
 
 `Multiple source Metamodels`
@@ -46,9 +52,15 @@ curl localhost:8080/transformation/Maven2Ant/apply \
 
 ```
 
-#### Search Transformations
+**Search Transformations:**
 
 ```bash
 curl localhost:8080/transformations/search?query=<search_term>
+```
+
+**Categorize Transformations by their InputMetamodels:**
+
+```bash
+curl localhost:8080/transformations/byInputMetamodel | jq
 ```
 
