@@ -45,6 +45,35 @@ public class Main {
             ctx.json(enabledTransformations);
         });
 
+                // Get transformation by input & output metamodels
+                router.get("/transformation/hasTransformation").handler(ctx -> {
+                    String inputMetamodel = ctx.request().getParam("inputMetamodel");
+                    String outputMetamodel = ctx.request().getParam("outputMetamodel");
+                
+                    if (inputMetamodel == null || outputMetamodel == null) {
+                        ctx.response().setStatusCode(400).end("Both inputMetamodel and outputMetamodel are required");
+                        return;
+                    }
+                
+                    List<Transformation> allTransformations = transformationManager.getAllTransformations();
+                    List<String> matchingTransformations = allTransformations.stream()
+                        .filter(transformation -> {
+                            boolean matchesInput = transformation.inputMetamodels.stream()
+                                .anyMatch(mm -> mm.path != null && mm.path.contains(inputMetamodel));
+                            boolean matchesOutput = transformation.outputMetamodels.stream()
+                                .anyMatch(mm -> mm.path != null && mm.path.contains(outputMetamodel));
+                            return matchesInput && matchesOutput;
+                        })
+                        .map(transformation -> transformation.name)
+                        .collect(Collectors.toList());
+                
+                    if (matchingTransformations.isEmpty()) {
+                        ctx.response().setStatusCode(404).end("No transformations found for the given metamodels");
+                    } else {
+                        ctx.json(matchingTransformations);
+                    }
+                });
+                
         router.get("/transformation/:idOrName").handler(ctx -> {
             String idOrName = ctx.pathParam("idOrName");
             Transformation transformation = null;
@@ -163,6 +192,9 @@ public class Main {
                     .end("Error searching transformations: " + e.getMessage());
             }
         });
+
+
+        
 
         // Apply a transformation by ID or name
         router.post("/transformation/:idOrName/apply").handler(ctx -> {
