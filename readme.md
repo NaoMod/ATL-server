@@ -64,3 +64,8 @@ curl localhost:8080/transformations/search?query=<search_term>
 curl localhost:8080/transformations/byInputMetamodel | jq
 ```
 
+**Search transformations by their Input and output metamodels:**
+
+```bash
+curl "http://localhost:8080/transformation/hasTransformation?inputMetamodel=Ant.ecore&outputMetamodel=Maven.ecore"
+```
