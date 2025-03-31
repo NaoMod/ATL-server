@@ -1,6 +1,7 @@
 ### ATL Transformation Server
 
 
+This repository contains artifacts for the paper *"LLM-based Agents for Model-to-Model Transformation in ATL,"* to be submitted at MODELS 2025.
 
 This project is a REST API server designed to manage and execute ATL transformations. It integrates with the `atl_zoo` repository to access transformation definitions and provides endpoints to manage, search, apply, and chain transformations. 
 
