@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:uml="http://www.eclipse.org/uml2/5.0.0/UML">
+  
+  <!-- Initial Node: Start of the workflow -->
+  <uml:InitialNode xmi:id="start1" name="Start"/>
+  
+  <!-- Activities -->
+  <uml:Activity xmi:id="act1" name="ReceiveOrder">
+    <incoming xmi:idref="flow1"/>
+    <outgoing xmi:idref="flow2"/>
+  </uml:Activity>
+  
+  <uml:Activity xmi:id="act2" name="ProcessPayment">
+    <incoming xmi:idref="flow2"/>
+    <outgoing xmi:idref="flow3"/>
+  </uml:Activity>
+  
+  <uml:Activity xmi:id="act3" name="ShipOrder">
+    <incoming xmi:idref="flow3"/>
+    <outgoing xmi:idref="flow4"/>
+  </uml:Activity>
+  
+  <uml:Activity xmi:id="act4" name="SendConfirmation">
+    <incoming xmi:idref="flow4"/>
+    <outgoing xmi:idref="flow5"/>
+  </uml:Activity>
+  
+  <!-- Final Node: End of the workflow -->
+  <uml:FinalNode xmi:id="end1" name="End"/>
+  
+  <!-- Control Flows (edges connecting nodes) -->
+  <uml:ControlFlow xmi:id="flow1" source="start1" target="act1"/>
+  <uml:ControlFlow xmi:id="flow2" source="act1" target="act2"/>
+  <uml:ControlFlow xmi:id="flow3" source="act2" target="act3"/>
+  <uml:ControlFlow xmi:id="flow4" source="act3" target="act4"/>
+  <uml:ControlFlow xmi:id="flow5" source="act4" target="end1"/>
+</xmi:XMI>

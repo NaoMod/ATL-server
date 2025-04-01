@@ -376,7 +376,28 @@ public class Main {
             ctx.json(filteredTransformations);
         });
 
-        server.createHttpServer().requestHandler(router).listen(8080);
+        server.createHttpServer().requestHandler(router).listen(8080).onComplete(result -> {
+            if (result.succeeded()) {
+                System.out.println("Server started on port 8080");
+            } else {
+                System.err.println("Failed to start server: " + result.cause().getMessage());
+                result.cause().printStackTrace();
+            }
+        });
+
+                // API spec: list all registered routes
+        router.get("/metamodel/spec").handler(ctx -> {
+            List<Map<String, Object>> routes = new ArrayList<>();
+            router.getRoutes().forEach(r -> {
+                if (r.getPath() != null) {
+                    Map<String, Object> routeInfo = new HashMap<>();
+                    routeInfo.put("path", r.getPath());
+                    routeInfo.put("methods", r.methods() != null ? r.methods().toString() : "ALL");
+                    routes.add(routeInfo);
+                }
+            });
+            ctx.json(routes);
+        });
     }
 
         
