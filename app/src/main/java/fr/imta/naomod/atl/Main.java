@@ -45,6 +45,50 @@ public class Main {
             ctx.json(enabledTransformations);
         });
 
+        // Return enabled transformations with at least one non-empty sample source model path
+        router.get("/transformations/samples").handler(ctx -> {
+            List<Transformation> allTransformations = transformationManager.getAllTransformations();
+            var result = allTransformations.stream()
+                .filter(t -> t.enabled != null && t.enabled)
+                .map(t -> {
+                    Map<String, Object> entry = new HashMap<>();
+                    entry.put("name", t.name);
+
+                    List<String> sources = new ArrayList<>();
+                    if (t.sampleModels != null) {
+                        for (SampleModel sm : t.sampleModels) {
+                            if (sm != null && sm.source != null) {
+                                for (String p : sm.source) {
+                                    if (p == null) continue;
+                                    String trimmed = p.trim();
+                                    if (trimmed.isEmpty()) continue;
+                                    String normalized = trimmed;
+                                    // Normalize relative paths like "./Book/modelBook.xmi"
+                                    if (t.folderPath != null) {
+                                        File f = new File(trimmed);
+                                        if (!f.isAbsolute()) {
+                                            f = new File(t.folderPath, trimmed.startsWith("./") ? trimmed.substring(2) : trimmed);
+                                        }
+                                        normalized = f.getAbsolutePath();
+                                    }
+                                    sources.add(normalized);
+                                }
+                            }
+                        }
+                    }
+                    entry.put("sampleSources", sources);
+                    return entry;
+                })
+                .filter(map -> {
+                    Object v = map.get("sampleSources");
+                    return (v instanceof List) && !((List<?>) v).isEmpty();
+                })
+                .collect(Collectors.toList());
+
+            ctx.json(result);
+        });
+
+
         // Get transformation by input & output metamodels
         router.get("/transformation/hasTransformation").handler(ctx -> {
             String inputMetamodel = ctx.request().getParam("inputMetamodel");

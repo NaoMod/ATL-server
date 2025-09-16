@@ -33,7 +33,7 @@ public class TransformationManager {
         List<File> dirsToProcess = new ArrayList<>();
 
         // Add original transformations directory
-        File originalDir = new File("./path//to/youDirectory");//put your atl zoo project directory
+        File originalDir = new File("/Users/zakariahachm/Downloads/atl_zoo");//put your atl zoo project directory
         if (originalDir.exists()) {
             dirsToProcess.add(originalDir);
         }

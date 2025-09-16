@@ -28,4 +28,7 @@ public class Transformation {
 
     @JsonProperty("output_metamodels")
     public List<NamedFile> outputMetamodels = new ArrayList<>();
+
+    @JsonProperty("sample_models")
+    public List<SampleModel> sampleModels = new ArrayList<>();
 }
