@@ -1,0 +1,411 @@
+openapi: 3.0.4
+info:
+  title: ATL Transformation Server API
+  version: 1.0.0
+  description: >
+    REST API server for managing and executing ATL model transformations.
+    Integrates with the atl_zoo repository.
+
+servers:
+  - url: http://localhost:8080
+
+paths:
+
+  /transformations:
+    get:
+      summary: List all transformations
+      description: Returns a JSON array of all available ATL transformations.
+      responses:
+        "200":
+          description: Array of Transformation objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object }
+              examples:
+                sample:
+                  value:
+                    - id: 1
+                      name: "Class2Relational"
+                      enabled: true
+                      inputMetamodels: [{ name: "IN", path: "Class.ecore" }]
+                      outputMetamodels: [{ name: "OUT", path: "Relational.ecore" }]
+                    - id: 2
+                      name: "UML2Java"
+                      enabled: true
+                      inputMetamodels: [{ name: "IN", path: "UML.ecore" }]
+                      outputMetamodels: [{ name: "OUT", path: "Java.ecore" }]
+                    - id: 3
+                      name: "Ant2Maven"
+                      enabled: false
+                      inputMetamodels: [{ name: "IN", path: "Ant.ecore" }]
+                      outputMetamodels: [{ name: "OUT", path: "Maven.ecore" }]
+
+  /transformations/enabled:
+    get:
+      summary: List enabled transformations
+      description: Returns only transformations that are marked as enabled.
+      responses:
+        "200":
+          description: Array of enabled Transformation objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object }
+
+  /transformations/samples:   
+    get:
+      summary: List transformations with sample models
+      description: Returns enabled transformations with non-empty sample source model paths.
+      responses:
+        "200":
+          description: Array of transformation samples
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object }
+              examples:
+                sample:
+                  value:
+                    - name: "Class2Relational"
+                      sampleSources: ["/path/to/Class.xmi"]
+
+  /transformations/search:
+    get:
+      summary: Search transformations
+      description: Search for a term in all ATL transformation files.
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema: { type: string }
+          example: "forEach"
+      responses:
+        "200":
+          description: List of matching transformations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object }
+              examples:
+                sample:
+                  value:
+                    - transformationName: "Class2Relational"
+                      atlFile: "Class2Relational.atl"
+                      matchContext: "rule Class2Table **forEach**..."
+        "400":
+          description: Search query is required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+              examples:
+                missing:
+                  value:
+                    code: 400
+                    message: "Search query is required"
+
+  /transformations/byInputMetamodel:
+    get:
+      summary: Categorize transformations by input metamodel
+      description: Returns transformations grouped by input metamodels (only >2 transformations).
+      responses:
+        "200":
+          description: Map of metamodel names to transformation names
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: array
+                  items: { type: string }
+              examples:
+                sample:
+                  value:
+                    UML: ["UML2Java", "UML2SQL", "UML2XML"]
+
+  /transformation/hasTransformation:
+    get:
+      summary: Find transformations by metamodels
+      description: Search for transformations matching input and output metamodels.
+      parameters:
+        - name: inputMetamodel
+          in: query
+          required: true
+          schema: { type: string }
+          example: "Class.ecore"
+        - name: outputMetamodel
+          in: query
+          required: true
+          schema: { type: string }
+          example: "Relational.ecore"
+      responses:
+        "200":
+          description: List of transformation names
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string }
+              examples:
+                found:
+                  value: ["Class2Relational"]
+        "400":
+          description: Both parameters required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+        "404":
+          description: No transformations found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+
+  /transformation/{Name}:
+    parameters:
+      - name: Name
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      summary: Get transformation by name
+      responses:
+        "200":
+          description: Transformation detail
+          content:
+            application/json:
+              schema: { type: object }
+              examples:
+                sample:
+                  value:
+                    id: 1
+                    name: "Class2Relational"
+                    enabled: true
+                    folderPath: "/path/to/Class2Relational"
+                    atlFile: "Class2Relational.atl"
+                    inputMetamodels: [{ name: "IN", path: "Class.ecore" }]
+                    outputMetamodels: [{ name: "OUT", path: "Relational.ecore" }]
+        "404":
+          description: Transformation not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+              examples:
+                notFound:
+                  value:
+                    code: 404
+                    message: "Transformation not found"
+
+  /transformation/{Name}/apply:
+    parameters:
+      - name: Name
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      summary: Apply a transformation
+      description: |
+        Apply an ATL transformation to uploaded input model(s).
+        Field names should match the input metamodel names (e.g., IN, INMaven).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                IN:
+                  type: string
+                  format: binary
+            examples:
+              single:
+                value:
+                  IN: "(binary)"
+              multiple:
+                value:
+                  INMaven: "(binary)"
+                  INProject: "(binary)"
+      responses:
+        "200":
+          description: Transformed model output (XMI)
+          content:
+            application/xml:
+              schema: { type: string }
+        "404":
+          description: Transformation not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+        "500":
+          description: Error applying transformation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+        "503":
+          description: No input files provided
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+
+  /transformation/add:
+    post:
+      summary: Add a new transformation
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                atlFilePath: { type: string }
+                description: { type: string }
+                inputMetamodelPath1: { type: string }
+                outputMetamodelPath1: { type: string }
+              required: [name, atlFilePath, inputMetamodelPath1, outputMetamodelPath1]
+            examples:
+              create:
+                value:
+                  name: "MyTransformation"
+                  atlFilePath: "/path/to/My.atl"
+                  inputMetamodelPath1: "/path/to/Input.ecore"
+                  outputMetamodelPath1: "/path/to/Output.ecore"
+      responses:
+        "201":
+          description: Transformation created
+          content:
+            application/json:
+              schema: { type: object }
+        "400":
+          description: Missing parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+        "500":
+          description: Error adding transformation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+
+  /transformation/chain:
+    post:
+      summary: Apply a chain of transformations
+      description: Apply multiple transformations sequentially.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                transformationChain:
+                  type: string
+                  description: JSON array of transformation names
+                file:
+                  type: string
+                  format: binary
+              required: [transformationChain, file]
+            examples:
+              chain:
+                value:
+                  transformationChain: '["Class2Relational", "Relational2SQL"]'
+                  file: "(binary)"
+      responses:
+        "200":
+          description: Final transformed model output
+          content:
+            application/xml:
+              schema: { type: string }
+        "400":
+          description: Missing or invalid parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+        "500":
+          description: Error applying transformation chain
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+
+  /debug/transformations:
+    get:
+      summary: Debug endpoint for transformations
+      responses:
+        "200":
+          description: Array of all Transformation objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object }
+
+  /spec:
+    get:
+      summary: List all registered routes
+      responses:
+        "200":
+          description: Array of route information
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object }
+
+  /openapi:
+    get:
+      summary: Get OpenAPI specification
+      responses:
+        "200":
+          description: OpenAPI specification (JSON)
+          content:
+            application/json:
+              schema: { type: object }
+
+security: []
